@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, Pressable, RefreshControl, Share, StyleSheet, TextInput, View as RNView } from 'react-native';
+import {
+  ActivityIndicator,
+  Button,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  Share,
+  StyleSheet,
+  TextInput,
+  View as RNView,
+} from 'react-native';
 import { Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -10,10 +20,8 @@ import { InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query
 import { Text, View } from '@/components/Themed';
 import EmptyState from '@/src/components/EmptyState';
 import { SkeletonCard } from '@/src/components/Skeleton';
-import { useToast } from '@/src/components/ToastProvider';
 import { joinGame, leaveGame } from '@/src/features/games/api';
 import type { Game } from '@/src/features/games/types';
-import { usePrefs } from '@/src/stores/prefs';
 import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
 import { useOnline } from '@/src/components/OfflineBanner';
 import { useInfiniteGames } from '@/src/features/games/hooks/useInfiniteGames';
@@ -131,6 +139,7 @@ function GameCard({
   const isFull = !joined && typeof game.maxPlayers === 'number' && typeof game.playersCount === 'number' && game.playersCount >= game.maxPlayers;
 
   const toast = useToast();
+  const { shareHintShown, setShareHintShown } = usePrefs();
 
   const share = () => {
     const url = Linking.createURL(`/game/${game.id}`);
@@ -164,6 +173,15 @@ function GameCard({
     if (copied) toast.info('Link copied');
   };
 
+  const handleLongPress = async () => {
+    if (!shareHintShown) {
+      toast.info('Tip: Long‑press to copy link');
+      setShareHintShown(true);
+      return;
+    }
+    await copyLink();
+  };
+
   return (
     <View style={styles.card}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -184,7 +202,7 @@ function GameCard({
           accessibilityLabel="Share game"
           hitSlop={10}
           onPress={share}
-          onLongPress={copyLink}
+          onLongPress={handleLongPress}
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 6 })}
         >
           <FontAwesome name="share-alt" size={18} />
