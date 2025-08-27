@@ -15,11 +15,15 @@ export async function changePassword(currentPassword: string, newPassword: strin
   await api.post('/auth/change-password', { currentPassword, newPassword }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
+export async function changeEmail(newEmail: string): Promise<void> {
+  await api.post('/auth/change-email', { newEmail }, { headers: { 'Cache-Control': 'no-store' } });
+}
+
 /**
  * Upload avatar image file and return absolute URL.
  * Backend endpoint assumed: POST /users/me/avatar -> { url: string }
  */
-export async function uploadAvatar(fileUri: string, onProgress?: (progress01: number) => void): Promise<string> {
+export async function uploadAvatar(fileUri: string, onProgress?: (progress01: number) => void, signal?: AbortSignal): Promise<string> {
   const form = new FormData();
   const name = fileUri.split('/').pop() || 'avatar.jpg';
   const type = name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
@@ -35,6 +39,7 @@ export async function uploadAvatar(fileUri: string, onProgress?: (progress01: nu
     onUploadProgress: (evt) => {
       if (onProgress && evt.total) onProgress(evt.loaded / evt.total);
     },
+    signal,
   });
   if (typeof data?.url === 'string') return data.url as string;
   if (typeof data?.avatarUrl === 'string') return data.avatarUrl as string;

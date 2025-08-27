@@ -14,8 +14,18 @@ export function validateCreateGame(fields: { title: string; startsAt: string; ma
   const errors: Partial<Record<'title' | 'startsAt' | 'maxPlayers', string>> = {};
   const title = fields.title.trim();
   if (!title) errors.title = 'Title is required';
+
   const dt = parseLocalDateTime(fields.startsAt);
-  if (!dt) errors.startsAt = 'Enter a valid date and time';
+  if (!dt) {
+    errors.startsAt = 'Enter a valid date and time';
+  } else {
+    // Require future time (5-minute grace to avoid edge cases)
+    const now = Date.now();
+    if (dt.getTime() < now + 5 * 60 * 1000) {
+      errors.startsAt = 'Date/time must be in the future';
+    }
+  }
+
   const mp = fields.maxPlayers?.trim();
   if (mp) {
     const n = Number(mp);

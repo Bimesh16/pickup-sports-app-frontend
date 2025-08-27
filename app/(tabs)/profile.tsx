@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button, StyleSheet, View as RNView } from 'react-native';
+import { usePrefs } from '@/src/stores/prefs';
 import { useRouter } from 'expo-router';
 import { Text, View } from '@/components/Themed';
 import Avatar from '@/src/components/Avatar';
@@ -41,6 +42,9 @@ export default function ProfileScreen() {
           <View style={{ height: 16 }} />
           <Button title="Edit profile" onPress={() => router.push('/(tabs)/account/edit')} />
           <Button title="Change password" onPress={() => router.push('/(tabs)/account/password')} />
+          <Button title="Change email" onPress={() => router.push('/(tabs)/account/email')} />
+          <RNView style={{ height: 8 }} />
+          <PrefsSection />
           <View style={{ height: 8 }} />
         </>
       ) : (
@@ -52,6 +56,17 @@ export default function ProfileScreen() {
       )}
       <Button title={pending ? 'Signing out...' : 'Sign out'} onPress={onLogout} disabled={pending || !user} />
     </View>
+  );
+}
+
+function PrefsSection() {
+  const { defaultCalDuration, setDefaultCalDuration } = usePrefs();
+  const next = defaultCalDuration === 60 ? 90 : defaultCalDuration === 90 ? 120 : 60;
+  return (
+    <RNView style={{ gap: 6 }}>
+      <Text>Calendar default duration: {defaultCalDuration} minutes</Text>
+      <Button title={`Change to ${next} minutes`} onPress={() => setDefaultCalDuration(next)} />
+    </RNView>
   );
 }
 

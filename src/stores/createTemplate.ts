@@ -6,45 +6,57 @@ type Template = {
   location?: string;
   startsAt?: string;
   maxPlayers?: string;
+  description?: string;
+  durationMinutes?: string;
 };
 
 type State = {
   template: Template | null;
+  remember: boolean;
   setTemplate: (t: Template | null) => void;
+  setRemember: (v: boolean) => void;
   _rehydrated?: boolean;
 };
 
 const KEY = 'createTemplate:v1';
 
-async function load(): Promise<Template | null> {
+async function load(): Promise<{ template: Template | null; remember: boolean }> {
   try {
     const raw = await SecureStore.getItemAsync(KEY);
-    return raw ? (JSON.parse(raw) as Template) : null;
+    if (!raw) return { template: null, remember: true };
+    const parsed = JSON.parse(raw);
+    return { template: parsed.template ?? parsed, remember: parsed.remember ?? true };
   } catch {
-    return null;
+    return { template: null, remember: true };
   }
 }
 
-async function save(t: Template | null) {
+async function saveState(payload: { template: Template | null; remember: boolean }) {
   try {
-    if (t) await SecureStore.setItemAsync(KEY, JSON.stringify(t));
-    else await SecureStore.deleteItemAsync(KEY);
+    await SecureStore.setItemAsync(KEY, JSON.stringify(payload));
   } catch {
     // ignore
   }
 }
 
-export const useCreateTemplate = create<State>((set) => {
+export const useCreateTemplate = create<State>((set, get) => {
   void (async () => {
-    const tpl = await load();
-    set({ template: tpl, _rehydrated: true });
+    const { template, remember } = await load();
+    set({ template, remember, _rehydrated: true });
   })();
 
   return {
     template: null,
+    remember: true,
     setTemplate: (t) => {
       set({ template: t });
-      void save(t);
+      const { remember } = get();
+      void saveState({ template: t, remember });
+    },
+    setRemember: (v) => {
+      set({ remember: v });
+      const { template } = get();
+      void saveState({ template, remember: v });
     },
   };
 });

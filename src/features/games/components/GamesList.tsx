@@ -1,6 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View as RNView } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Button, FlatList, Pressable, RefreshControl, Share, StyleSheet, TextInput, View as RNView } from 'react-native';
 import { Link } from 'expo-router';
+import * as Linking from 'expo-linking';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import ErrorBoundary from '@/src/components/ErrorBoundary';
+import { useToast } from '@/src/components/ToastProvider';
+import { usePrefs } from '@/src/stores/prefs';
 import { InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Text, View } from '@/components/Themed';
 import EmptyState from '@/src/components/EmptyState';
@@ -123,43 +128,112 @@ function GameCard({
   const starts = new Date(game.startsAt);
   const when = `${starts.toLocaleDateString()} ${starts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   const joined = !!game.joined;
+  const isFull = !joined && typeof game.maxPlayers === 'number' && typeof game.playersCount === 'number' && game.playersCount >= game.maxPlayers;
+
+  const toast = useToast();
+
+  const share = () => {
+    const url = Linking.createURL(`/game/${game.id}`);
+    Share.share({ message: `Join this game: ${url}` });
+  };
+
+  const copyLink = async () => {
+    const url = Linking.createURL(`/game/${game.id}`);
+    let copied = false;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const mod = require('expo-clipboard');
+      if (mod?.setStringAsync) {
+        await mod.setStringAsync(url);
+        copied = true;
+      }
+    } catch {
+      // ignore, try web API
+    }
+    if (!copied) {
+      try {
+        if (typeof navigator !== 'undefined' && 'clipboard' in navigator) {
+          // @ts-ignore
+          await navigator.clipboard.writeText(url);
+          copied = true;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (copied) toast.info('Link copied');
+  };
 
   return (
     <View style={styles.card}>
-      <Link href={`/(tabs)/game/${game.id}`} asChild>
-        <Pressable style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1.0 }]}>
-          <View>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.cardTitle}>{game.title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Link href={`/(tabs)/game/${game.id}`} asChild>
+          <Pressable
+            accessibilityLabel={`Open ${game.title}`}
+            style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1.0, flex: 1 }]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{game.title}</Text>
               {joined ? <Chip text="Joined" color="#d1fae5" /> : null}
               {isOwner ? <Chip text="Owner" color="#e0e7ff" /> : null}
+              {isFull ? <Chip text="Full" color="#fee2e2" /> : null}
             </View>
-            {game.location ? <Text>{game.location}</Text> : null}
-            <Text>{when}</Text>
-            {typeof game.playersCount === 'number' && typeof game.maxPlayers === 'number' ? (
-              <Text>{game.playersCount} / {game.maxPlayers} players</Text>
-            ) : null}
-            {game.sport ? <Text>{game.sport}</Text> : null}
-          </View>
+          </Pressable>
+        </Link>
+        <Pressable
+          accessibilityLabel="Share game"
+          hitSlop={10}
+          onPress={share}
+          onLongPress={copyLink}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 6 })}
+        >
+          <FontAwesome name="share-alt" size={18} />
         </Pressable>
-      </Link>
+      </View>
+
+      {game.location ? <Text>{game.location}</Text> : null}
+      <Text>{when}</Text>
+      {typeof game.playersCount === 'number' && typeof game.maxPlayers === 'number' ? (
+        <>
+          <Text>{game.playersCount} / {game.maxPlayers} players</Text>
+          {(() => {
+            const left = Math.max(game.maxPlayers - game.playersCount, 0);
+            const low = left <= 2;
+            const full = left === 0;
+            const color = full ? '#991b1b' : low ? '#92400e' : '#374151';
+            return (
+              <Text style={{ color }}>
+                {full ? 'Full' : left === 1 ? '1 slot left' : `${left} slots left`}
+              </Text>
+            );
+          })()}
+        </>
+      ) : null}
+      {game.sport ? <Text>{game.sport}</Text> : null}
+
       <RNView style={{ height: 8 }} />
       <Button
-        title={pending ? 'Please wait...' : joined ? 'Leave' : 'Join'}
+        title={pending ? 'Please wait...' : joined ? 'Leave' : isFull ? 'Full' : 'Join'}
         onPress={() => (joined ? onLeave(game.id) : onJoin(game.id))}
-        disabled={!!disabled || pending}
+        disabled={!!disabled || pending || (isFull && !joined)}
       />
     </View>
   );
 }
 
 export default function GamesList({ initialShowJoined = false, allowToggle = true }: Props) {
-  const { lastQuery, showJoinedDefault, setLastQuery, setShowJoinedDefault, _rehydrated } = usePrefs();
+  const { lastQuery, showJoinedDefault, timeFilter: savedTimeFilter, setLastQuery, setShowJoinedDefault, setTimeFilter: saveTimeFilter, _rehydrated } = usePrefs();
 
   const [showJoined, setShowJoined] = useState<boolean>(initialShowJoined || showJoinedDefault);
   const [query, setQuery] = useState<string>(lastQuery);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>(savedTimeFilter ?? 'all');
   const debouncedQuery = useDebouncedValue(query, 350);
+  const listRef = useRef<FlatList<Game> | null>(null);
+
+  // Scroll to top when primary filters change
+  useEffect(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, [showJoined, timeFilter]);
 
   const { data, isLoading, isError, error, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteGames({
     q: debouncedQuery || undefined,
@@ -176,6 +250,10 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
   useEffect(() => {
     if (_rehydrated) setLastQuery(query);
   }, [query, _rehydrated, setLastQuery]);
+
+  useEffect(() => {
+    if (_rehydrated) saveTimeFilter(timeFilter);
+  }, [timeFilter, _rehydrated, saveTimeFilter]);
 
   const user = useAuthStore((s) => s.user);
 
@@ -215,7 +293,25 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
     );
   }
 
-  if (isError) {
+  const hasPages = !!data?.pages && (Array.isArray(data.pages) ? data.pages.length > 0 : false);
+
+  // Auto-retry non-blocking errors (when some data already exists) with gentle backoff (max 3 tries)
+  const autoRetryRef = useRef(0);
+  useEffect(() => {
+    if (isError && hasPages && !isRefetching && autoRetryRef.current < 3) {
+      autoRetryRef.current += 1;
+      const delay = Math.min(5000 * autoRetryRef.current, 15000);
+      const t = setTimeout(() => {
+        refetch();
+      }, delay);
+      return () => clearTimeout(t);
+    }
+    if (!isError) {
+      autoRetryRef.current = 0;
+    }
+  }, [isError, hasPages, isRefetching, refetch]);
+
+  if (isError && !hasPages) {
     return (
       <View style={styles.container}>
         <RNView style={styles.toolbar}>
@@ -253,6 +349,22 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
         <Button title="Today" onPress={() => setTimeFilter('today')} />
         <Button title="This week" onPress={() => setTimeFilter('week')} />
       </RNView>
+      {(showJoined || timeFilter !== 'all' || query.trim()) ? (
+        <RNView style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
+          <Pressable
+            onPress={() => {
+              setShowJoined(false);
+              setTimeFilter('all');
+              setQuery('');
+              listRef.current?.scrollToOffset({ offset: 0, animated: true });
+            }}
+            style={({ pressed }) => [{ alignSelf: 'flex-start', backgroundColor: '#e5e7eb', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, opacity: pressed ? 0.7 : 1 }]}
+            accessibilityLabel="Clear filters"
+          >
+            <Text>Clear filters ✕</Text>
+          </Pressable>
+        </RNView>
+      ) : null}
 
       {!list?.length ? (
         <EmptyState
@@ -262,38 +374,61 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
           onAction={() => refetch()}
         />
       ) : (
-        <FlatList
-          data={list}
-          keyExtractor={(g) => g.id}
-          renderItem={({ item }) => {
-            const isOwner = !!(user && item.createdBy?.username && user.username === item.createdBy.username);
-            const pending = joinPendingId === item.id || leavePendingId === item.id;
-            return (
-              <GameCard
-                game={item}
-                onJoin={(id) => join.mutate(id)}
-                onLeave={(id) => leave.mutate(id)}
-                disabled={!online}
-                pending={pending}
-                isOwner={isOwner}
-              />
-            );
-          }}
-          contentContainerStyle={{ padding: 16 }}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-          onEndReachedThreshold={0.4}
-          onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-          }}
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View style={[styles.center, { paddingVertical: 16 }]}>
-                <ActivityIndicator />
+        <>
+          <FlatList
+            ref={(r) => (listRef.current = r as any)}
+            data={list}
+            keyExtractor={(g) => g.id}
+            renderItem={({ item }) => {
+              const isOwner = !!(user && item.createdBy?.username && user.username === item.createdBy.username);
+              const pending = joinPendingId === item.id || leavePendingId === item.id;
+              return (
+                <ErrorBoundary fallback={<View style={[styles.card, { alignItems: 'center' }]}><Text>Unable to render item</Text></View>}>
+                  <GameCard
+                    game={item}
+                    onJoin={(id) => join.mutate(id)}
+                    onLeave={(id) => leave.mutate(id)}
+                    disabled={!online}
+                    pending={pending}
+                    isOwner={isOwner}
+                  />
+                </ErrorBoundary>
+              );
+            }}
+            contentContainerStyle={{ padding: 16 }}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+            onEndReachedThreshold={0.4}
+            onEndReached={() => {
+              if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+            }}
+            ListFooterComponent={
+              isFetchingNextPage ? (
+                <View style={[styles.center, { paddingVertical: 16 }]}>
+                  <ActivityIndicator />
+                </View>
+              ) : null
+            }
+            ListHeaderComponent={
+              <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+                {!online ? (
+                  <RNView style={styles.pillWarning}>
+                    <Text style={styles.pillWarningText}>You’re offline. Join/Leave is disabled.</Text>
+                  </RNView>
+                ) : null}
+                {isError ? (
+                  <RNView style={{ marginTop: 8, marginBottom: 4 }}>
+                    <RNView style={styles.pillError}>
+                      <Text style={styles.pillErrorText}>{(error as any)?.message ?? 'Some games may be out of date.'}</Text>
+                    </RNView>
+                    <Button title={isRefetching ? 'Retrying…' : 'Retry now'} onPress={() => refetch()} />
+                  </RNView>
+                ) : null}
               </View>
-            ) : null
-          }
-        />
+            }
+            stickyHeaderIndices={[0]}
+          />
+        </>
       )}
     </View>
   );
@@ -337,4 +472,20 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  pillWarning: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  pillWarningText: { color: '#374151' },
+  pillError: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  pillErrorText: { color: '#991b1b' },
 });

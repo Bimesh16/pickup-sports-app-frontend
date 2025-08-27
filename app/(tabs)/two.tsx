@@ -16,9 +16,9 @@ export default function CreateGameScreen() {
   const [location, setLocation] = useState('');
   const [startsAt, setStartsAt] = useState(''); // ISO string or "YYYY-MM-DDTHH:mm" local
   const [maxPlayers, setMaxPlayers] = useState<string>('');
-  const [remember, setRemember] = useState(true);
-
-  const { template, setTemplate, _rehydrated } = useCreateTemplate();
+  const [description, setDescription] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState<string>('60');
+  const { template, setTemplate, remember, setRemember, _rehydrated } = useCreateTemplate();
 
   useEffect(() => {
     if (_rehydrated && template) {
@@ -26,6 +26,8 @@ export default function CreateGameScreen() {
       setLocation(template.location ?? '');
       setStartsAt(template.startsAt ?? '');
       setMaxPlayers(template.maxPlayers ?? '');
+      setDescription(template.description ?? '');
+      setDurationMinutes(template.durationMinutes ?? '60');
     }
   }, [_rehydrated]); // only initial prefill
 
@@ -44,7 +46,7 @@ export default function CreateGameScreen() {
       await qc.invalidateQueries({ queryKey: ['games'] });
       toast.success('Game created');
       if (remember) {
-        setTemplate({ title, location, startsAt, maxPlayers });
+        setTemplate({ title, location, startsAt, maxPlayers, description, durationMinutes });
       } else {
         setTemplate(null);
       }
@@ -52,6 +54,8 @@ export default function CreateGameScreen() {
       setLocation('');
       setStartsAt('');
       setMaxPlayers('');
+      setDescription('');
+      setDurationMinutes('60');
     },
     onError: (e: any) => {
       toast.error(e?.message ?? 'Create failed');
@@ -65,6 +69,7 @@ export default function CreateGameScreen() {
       location: location.trim() || undefined,
       startsAt: dt ? dt.toISOString() : startsAt,
       maxPlayers: maxPlayers ? Number(maxPlayers) : undefined,
+      description: description.trim() || undefined,
     };
     mutation.mutate(input);
   };
@@ -72,6 +77,15 @@ export default function CreateGameScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create a game</Text>
+
+      {!canSubmit && (title.trim().length > 0 || startsAt.trim().length > 0) ? (
+        <View style={{ backgroundColor: '#fef3c7', padding: 8, borderRadius: 6, marginBottom: 8 }}>
+          <Text style={{ color: '#92400e' }}>
+            {errors.title ?? errors.startsAt ?? errors.maxPlayers ?? 'Please fix the highlighted fields'}
+          </Text>
+        </View>
+      ) : null}
+
       <RNView style={styles.formRow}>
         <TextInput
           style={[styles.input, errors.title ? styles.inputError : null]}
@@ -104,15 +118,46 @@ export default function CreateGameScreen() {
         {errors.maxPlayers ? <Text style={styles.error}>{errors.maxPlayers}</Text> : null}
       </RNView>
 
-      <RNView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Button title={template ? 'Use last values' : 'No template saved'} onPress={() => {
-          if (template) {
-            setTitle(template.title ?? '');
-            setLocation(template.location ?? '');
-            setStartsAt(template.startsAt ?? '');
-            setMaxPlayers(template.maxPlayers ?? '');
-          }
-        }} disabled={!template} />
+      <RNView style={styles.formRow}>
+        <TextInput
+          style={styles.input}
+          placeholder="Duration in minutes (client only, default 60)"
+          keyboardType="number-pad"
+          value={durationMinutes}
+          onChangeText={(v) => {
+            // allow empty or positive ints
+            if (v === '' || /^[0-9]{0,3}$/.test(v)) setDurationMinutes(v);
+          }}
+        />
+      </RNView>
+
+      <RNView style={styles.formRow}>
+        <TextInput
+          style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+          placeholder="Description (optional)"
+          multiline
+          numberOfLines={4}
+          value={description}
+          onChangeText={setDescription}
+        />
+      </RNView>
+
+      <RNView style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+        <Button
+          title={template ? 'Use last values' : 'No template saved'}
+          onPress={() => {
+            if (template) {
+              setTitle(template.title ?? '');
+              setLocation(template.location ?? '');
+              setStartsAt(template.startsAt ?? '');
+              setMaxPlayers(template.maxPlayers ?? '');
+              setDescription(template.description ?? '');
+              setDurationMinutes(template.durationMinutes ?? '60');
+            }
+          }}
+          disabled={!template}
+        />
+        <Button title="Reset template" onPress={() => setTemplate(null)} disabled={!template} />
         <Button title={remember ? 'Remember: ON' : 'Remember: OFF'} onPress={() => setRemember((v) => !v)} />
       </RNView>
 
