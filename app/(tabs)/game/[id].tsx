@@ -304,7 +304,7 @@ export default function GameDetailsScreen() {
 
       {isError ? (
         <View style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 6, marginBottom: 8 }}>
-          <Text style={{ color: '#991b1b', marginBottom: 4 }}>There was a problem updating this game.</Text>
+          <Text style={{ color: '#7f1d1d', marginBottom: 4 }}>There was a problem updating this game.</Text>
           <Button title={isRefetching ? 'Retrying…' : 'Retry'} onPress={() => refetch()} />
         </View>
       ) : null}
@@ -319,13 +319,13 @@ export default function GameDetailsScreen() {
           const left = Math.max(data.maxPlayers - data.playersCount, 0);
           const low = left <= 2;
           const fullText = left === 0 ? 'Full' : left === 1 ? '1 slot left' : `${left} slots left`;
-          const color = left === 0 ? '#991b1b' : low ? '#92400e' : '#374151';
+          const color = left === 0 ? '#7f1d1d' : low ? '#7c2d12' : '#374151';
           return <Text style={{ color }}>{fullText}</Text>;
         })()
       ) : null}
       {isFull ? (
         <View style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 6, marginTop: 6 }}>
-          <Text style={{ color: '#991b1b' }}>This game is full. You can still open it to see details.</Text>
+          <Text style={{ color: '#7f1d1d' }}>This game is full. You can still open it to see details.</Text>
         </View>
       ) : null}
       {data.description ? (
@@ -429,7 +429,7 @@ function ParticipantsSection({ gameId }: { gameId: string }) {
 
       {isError ? (
         <View style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 6, marginBottom: 8 }}>
-          <Text style={{ color: '#991b1b', marginBottom: 4 }}>{(error as any)?.message ?? 'Failed to load participants.'}</Text>
+          <Text style={{ color: '#7f1d1d', marginBottom: 4 }}>{(error as any)?.message ?? 'Failed to load participants.'}</Text>
           <Button title={isRefetching ? 'Retrying…' : 'Retry'} onPress={() => refetch()} />
         </View>
       ) : null}

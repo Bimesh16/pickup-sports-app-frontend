@@ -102,10 +102,18 @@ function useJoinLeaveOptimistic() {
   return { join, leave, joinPendingId, leavePendingId };
 }
 
-function Chip({ text, color = '#e5e7eb' }: { text: string; color?: string }) {
+function Chip({
+  text,
+  color = '#e5e7eb',
+  textColor = '#374151',
+}: {
+  text: string;
+  color?: string;
+  textColor?: string;
+}) {
   return (
     <View style={{ backgroundColor: color, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: 8 }}>
-      <Text style={{ fontSize: 12 }}>{text}</Text>
+      <Text style={{ fontSize: 12, color: textColor }}>{text}</Text>
     </View>
   );
 }
@@ -175,9 +183,15 @@ function GameCard({
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={styles.cardTitle} numberOfLines={1}>{game.title}</Text>
-              {joined ? <Chip text="Joined" color="#d1fae5" /> : null}
-              {isOwner ? <Chip text="Owner" color="#e0e7ff" /> : null}
-              {isFull ? <Chip text="Full" color="#fee2e2" /> : null}
+              {joined ? (
+                <Chip text="Joined" color="#d1fae5" textColor="#065f46" />
+              ) : null}
+              {isOwner ? (
+                <Chip text="Owner" color="#e0e7ff" textColor="#3730a3" />
+              ) : null}
+              {isFull ? (
+                <Chip text="Full" color="#fee2e2" textColor="#b91c1c" />
+              ) : null}
             </View>
           </Pressable>
         </Link>
