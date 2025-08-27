@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 type Template = {
   title?: string;
+  sport?: string;
   location?: string;
   startsAt?: string;
   maxPlayers?: string;
