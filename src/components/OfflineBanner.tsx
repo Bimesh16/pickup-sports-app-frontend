@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
-import { Text, View } from '@/components/Themed';
+import Banner from './Banner';
 
 export function useOnline() {
   const [online, setOnline] = useState(true);
@@ -50,23 +49,5 @@ export function useOnline() {
 export default function OfflineBanner() {
   const online = useOnline();
   if (online) return null;
-  return (
-    <View style={styles.bar}>
-      <Text style={styles.text}>You’re offline</Text>
-    </View>
-  );
+  return <Banner text="You’re offline" backgroundColor="#dc2626" />;
 }
-
-const styles = StyleSheet.create({
-  bar: {
-    position: 'absolute',
-    top: 50,
-    alignSelf: 'center',
-    backgroundColor: '#dc2626',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    zIndex: 1000,
-  },
-  text: { color: '#fff' },
-});
