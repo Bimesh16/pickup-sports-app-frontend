@@ -26,7 +26,6 @@ import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
 import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 import { useInfiniteGames } from '@/src/features/games/hooks/useInfiniteGames';
 import { useAuthStore } from '@/src/stores/auth';
-import { spacing, radius } from '@/constants/Spacing';
 import { isFull as isGameFull, slotsLeft } from '@/src/utils/capacity';
 
 type Props = {
@@ -123,10 +122,9 @@ function Chip({
 }) {
   return (
     <View style={{ backgroundColor: color, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: 8 }}>
-      <Text style={{ fontSize: 12 }} allowFontScaling numberOfLines={1} adjustsFontSizeToFit>
+      <Text style={{ fontSize: 12, color: textColor }} allowFontScaling numberOfLines={1} adjustsFontSizeToFit>
         {text}
       </Text>
-      <Text style={{ fontSize: 12, color: textColor }}>{text}</Text>
     </View>
   );
 }
@@ -217,16 +215,6 @@ function GameCard({
               {joined ? <Chip text="Joined" color="#d1fae5" /> : null}
               {isOwner ? <Chip text="Owner" color="#e0e7ff" /> : null}
               {isFull ? <Chip text="Full" color="#fee2e2" /> : null}
-              <Text style={styles.cardTitle} numberOfLines={1}>{game.title}</Text>
-              {joined ? (
-                <Chip text="Joined" color="#d1fae5" textColor="#065f46" />
-              ) : null}
-              {isOwner ? (
-                <Chip text="Owner" color="#e0e7ff" textColor="#3730a3" />
-              ) : null}
-              {isFull ? (
-                <Chip text="Full" color="#fee2e2" textColor="#b91c1c" />
-              ) : null}
             </View>
           </Pressable>
         </Link>
@@ -251,21 +239,17 @@ function GameCard({
       {typeof game.playersCount === 'number' && typeof game.maxPlayers === 'number' ? (
         <>
           <Text>{game.playersCount} / {game.maxPlayers} players</Text>
-          {left !== undefined ? (() => {
-          <Text allowFontScaling>
-            {game.playersCount} / {game.maxPlayers} players
-          </Text>
           {(() => {
-            const left = Math.max(game.maxPlayers - game.playersCount, 0);
-            const low = left <= 2;
-            const full = left === 0;
+            const leftCalc = Math.max(game.maxPlayers - game.playersCount, 0);
+            const low = leftCalc <= 2;
+            const full = leftCalc === 0;
             const color = full ? '#991b1b' : low ? '#92400e' : '#374151';
             return (
               <Text style={{ color }} allowFontScaling numberOfLines={1}>
-                {full ? 'Full' : left === 1 ? '1 slot left' : `${left} slots left`}
+                {full ? 'Full' : leftCalc === 1 ? '1 slot left' : `${leftCalc} slots left`}
               </Text>
             );
-          })() : null}
+          })()}
         </>
       ) : null}
       {game.sport ? (
@@ -509,31 +493,9 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
                 </View>
               ) : null
             }
-            ListHeaderComponent={
-              <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.md }}>
+            ListHeaderComponent={() => (
+              <RNView style={{ paddingHorizontal: 16, paddingTop: 8 }}>
                 {!online ? (
-                  <View
-                    style={styles.pillWarning}
-                    lightColor="#f3f4f6"
-                    darkColor="#374151"
-                  >
-                    <Text style={styles.pillWarningText} lightColor="#374151" darkColor="#f3f4f6">
-                      You’re offline. Join/Leave is disabled.
-                    </Text>
-                  </View>
-                ) : null}
-                {isError ? (
-                  <View style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>
-                    <View
-                      style={styles.pillError}
-                      lightColor="#fee2e2"
-                      darkColor="#7f1d1d"
-                    >
-                      <Text style={styles.pillErrorText} lightColor="#991b1b" darkColor="#fee2e2">
-                        {(error as any)?.message ?? 'Some games may be out of date.'}
-                      </Text>
-                    </View>
-=======
                   <RNView style={styles.pillWarning}>
                     <Text style={styles.pillWarningText} allowFontScaling numberOfLines={2}>
                       You’re offline. Join/Leave is disabled.
@@ -548,16 +510,15 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
                       </Text>
                     </RNView>
                     <Button title={isRefetching ? 'Retrying…' : 'Retry now'} onPress={() => refetch()} />
-                  </View>
+                  </RNView>
                 ) : null}
                 {!isLoading && !isRefetching ? (
                   <Text style={{ marginTop: 4, color: '#6b7280' }}>
                     Updated {updatedMinutesAgo} min ago
                   </Text>
                 ) : null}
-              </View>
-            }
-            stickyHeaderIndices={[0]}
+              </RNView>
+            )}
           />
         </>
       )}
@@ -605,16 +566,18 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
   pillWarning: {
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#f3f4f6',
   },
-  pillWarningText: {},
+  pillWarningText: { color: '#374151' },
   pillError: {
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#fee2e2',
   },
-  pillErrorText: {},
+  pillErrorText: { color: '#991b1b' },
 });

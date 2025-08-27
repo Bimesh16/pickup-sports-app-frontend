@@ -33,17 +33,20 @@ export default function DateTimeField({ value, onChange, placeholder = 'Pick dat
   useEffect(() => {
     if (Platform.OS === 'web') return;
     let mounted = true;
-    import('@react-native-community/datetimepicker')
-      .then((mod) => {
-        if (!mounted) return;
+    try {
+      // Use eval('require') so Metro doesn't try to resolve at bundle time
+      // eslint-disable-next-line no-eval
+      const dynRequire = eval('require') as any;
+      const mod = dynRequire ? dynRequire('@react-native-community/datetimepicker') : null;
+      if (mounted && mod) {
         setPicker({
           DateTimePicker: mod?.default ?? mod,
           DateTimePickerAndroid: mod?.DateTimePickerAndroid,
         });
-      })
-      .catch(() => {
-        // module not available; fall back handled below
-      });
+      }
+    } catch {
+      // Module not available; fallback handled by rendering TextInput below
+    }
     return () => {
       mounted = false;
     };

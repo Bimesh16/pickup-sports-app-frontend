@@ -1,4 +1,4 @@
-export function queryRetry(failureCount: number) {
+export function queryRetry(failureCount: number, p0: any) {
   if (failureCount >= 3) {
     return false;
   }

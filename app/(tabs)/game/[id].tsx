@@ -1,17 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Button,
-    FlatList,
-    Platform,
-    Pressable,
-    RefreshControl,
-    Share,
-    StyleSheet,
-    View as RNView,
-    Modal,
-    TextInput,
   ActionSheetIOS,
   ActivityIndicator,
   Button,
@@ -23,6 +11,7 @@ import {
   Share,
   StyleSheet,
   View as RNView,
+  TextInput,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Linking from 'expo-linking';
@@ -38,10 +27,9 @@ import { useAutoJoin } from '@/src/features/games/hooks/useAutoJoin';
 import { createInvite, deleteGame, joinGame, leaveGame } from '@/src/features/games/api';
 import { useAuthStore } from '@/src/stores/auth';
 import { confirm } from '@/src/components/ConfirmDialog';
-import { useOnline } from '@/src/components/OfflineBanner';
+import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 import type { Participant } from '@/src/features/games/types';
 import { isFull as isGameFull, slotsLeft } from '@/src/utils/capacity';
-import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 
 let updateGameFn: any;
 try {
