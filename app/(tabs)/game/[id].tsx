@@ -25,6 +25,8 @@ import { useParticipants } from '@/src/features/games/hooks/useParticipants';
 import { createInvite, deleteGame, joinGame, leaveGame } from '@/src/features/games/api';
 import { useAuthStore } from '@/src/stores/auth';
 import { confirm } from '@/src/components/ConfirmDialog';
+import { useOnline } from '@/src/components/OfflineBanner';
+import { isFull as isGameFull, slotsLeft } from '@/src/utils/capacity';
 import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 
 export default function GameDetailsScreen() {
@@ -209,11 +211,12 @@ export default function GameDetailsScreen() {
   const isOwner = !!(user && data.createdBy?.username && user.username === data.createdBy.username);
   const online = useOnline();
   const joined = !!data.joined;
-  const isFull = !joined && typeof data.maxPlayers === 'number' && typeof data.playersCount === 'number' && data.playersCount >= data.maxPlayers;
+  const isFull = isGameFull(joined, data.maxPlayers, data.playersCount);
   const playersInfo =
     typeof data.playersCount === 'number' && typeof data.maxPlayers === 'number'
       ? `${data.playersCount} / ${data.maxPlayers} players`
       : undefined;
+  const left = slotsLeft(data.maxPlayers, data.playersCount);
 
   return (
     <View style={styles.container}>
@@ -314,9 +317,8 @@ export default function GameDetailsScreen() {
       {data.location ? <Text>{data.location}</Text> : null}
       {data.sport ? <Text>{data.sport}</Text> : null}
       {playersInfo ? <Text>{playersInfo}</Text> : null}
-      {typeof data.playersCount === 'number' && typeof data.maxPlayers === 'number' ? (
+      {left !== undefined ? (
         (() => {
-          const left = Math.max(data.maxPlayers - data.playersCount, 0);
           const low = left <= 2;
           const fullText = left === 0 ? 'Full' : left === 1 ? '1 slot left' : `${left} slots left`;
           const color = left === 0 ? '#7f1d1d' : low ? '#7c2d12' : '#374151';

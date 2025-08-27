@@ -18,6 +18,7 @@ import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
 import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 import { useInfiniteGames } from '@/src/features/games/hooks/useInfiniteGames';
 import { useAuthStore } from '@/src/stores/auth';
+import { isFull as isGameFull, slotsLeft } from '@/src/utils/capacity';
 
 type Props = {
   initialShowJoined?: boolean;
@@ -139,7 +140,8 @@ function GameCard({
   const starts = new Date(game.startsAt);
   const when = `${starts.toLocaleDateString()} ${starts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   const joined = !!game.joined;
-  const isFull = !joined && typeof game.maxPlayers === 'number' && typeof game.playersCount === 'number' && game.playersCount >= game.maxPlayers;
+  const isFull = isGameFull(joined, game.maxPlayers, game.playersCount);
+  const left = slotsLeft(game.maxPlayers, game.playersCount);
 
   const toast = useToast();
 
@@ -229,6 +231,8 @@ function GameCard({
       <Text allowFontScaling numberOfLines={1}>{when}</Text>
       {typeof game.playersCount === 'number' && typeof game.maxPlayers === 'number' ? (
         <>
+          <Text>{game.playersCount} / {game.maxPlayers} players</Text>
+          {left !== undefined ? (() => {
           <Text allowFontScaling>
             {game.playersCount} / {game.maxPlayers} players
           </Text>
@@ -242,7 +246,7 @@ function GameCard({
                 {full ? 'Full' : left === 1 ? '1 slot left' : `${left} slots left`}
               </Text>
             );
-          })()}
+          })() : null}
         </>
       ) : null}
       {game.sport ? (
