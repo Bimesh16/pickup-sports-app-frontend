@@ -153,6 +153,7 @@ function GameCard({
   const left = slotsLeft(game.maxPlayers, game.playersCount);
 
   const toast = useToast();
+  const { shareHintShown, setShareHintShown } = usePrefs();
 
   const share = () => {
     const url = Linking.createURL(`/game/${game.id}`);
@@ -184,6 +185,15 @@ function GameCard({
       }
     }
     if (copied) toast.info('Link copied');
+  };
+
+  const handleLongPress = async () => {
+    if (!shareHintShown) {
+      toast.info('Tip: Long‑press to copy link');
+      setShareHintShown(true);
+      return;
+    }
+    await copyLink();
   };
 
   return (
@@ -225,7 +235,7 @@ function GameCard({
           accessibilityRole="button"
           hitSlop={10}
           onPress={share}
-          onLongPress={copyLink}
+          onLongPress={handleLongPress}
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 6 })}
         >
           <FontAwesome name="share-alt" size={18} />
