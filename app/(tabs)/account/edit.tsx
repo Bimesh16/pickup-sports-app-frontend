@@ -9,7 +9,7 @@ import AvatarPicker from '@/src/components/AvatarPicker';
 import FormField from '@/src/components/FormField';
 import { useToast } from '@/src/components/ToastProvider';
 import { useAuthStore } from '@/src/stores/auth';
-import { getProfile, updateProfile, uploadAvatar } from '@/src/features/user/api';
+import { deleteAvatar, getProfile, updateProfile, uploadAvatar } from '@/src/features/user/api';
 import { validateDisplayName, validateUrlOptional } from '@/src/utils/validation';
 import { useUnsavedChangesWarning } from '@/src/hooks/useUnsavedChangesWarning';
 
@@ -20,6 +20,7 @@ export default function EditProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '');
   const [pickedUri, setPickedUri] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [etag, setEtag] = useState<string | null>(null);
   const toast = useToast();
   const router = useRouter();
   const [saved, setSaved] = useState(false);
@@ -32,10 +33,11 @@ export default function EditProfileScreen() {
     // refresh from server on mount to ensure latest
     (async () => {
       try {
-        const fresh = await getProfile();
+        const { profile: fresh, etag } = await getProfile();
         setUser(fresh);
         setDisplayName(fresh.displayName ?? '');
         setAvatarUrl(fresh.avatarUrl ?? '');
+        setEtag(etag ?? null);
       } catch {
         // ignore
       }
@@ -47,6 +49,7 @@ export default function EditProfileScreen() {
   const mutation = useMutation({
     mutationFn: async () => {
       let finalAvatarUrl = avatarUrl || null;
+      let currentEtag = etag;
 
       if (pickedUri) {
         try {
@@ -54,11 +57,13 @@ export default function EditProfileScreen() {
           abortRef.current = new AbortController();
           const uploaded = await uploadAvatar(
             pickedUri,
+            currentEtag ?? undefined,
             (p) => setUploadProgress(Math.max(0.01, Math.min(0.99, p))),
             abortRef.current.signal
           );
           setUploadProgress(1);
-          finalAvatarUrl = uploaded;
+          finalAvatarUrl = uploaded.url;
+          currentEtag = uploaded.etag ?? currentEtag;
         } catch (e: any) {
           setUploadProgress(0);
           if (e?.name === 'CanceledError' || e?.message?.toString?.()?.includes?.('aborted')) {
@@ -70,9 +75,21 @@ export default function EditProfileScreen() {
         } finally {
           abortRef.current = null;
         }
+      } else if (!avatarUrl && user?.avatarUrl) {
+        try {
+          const res = await deleteAvatar(currentEtag ?? undefined);
+          currentEtag = res.etag ?? currentEtag;
+        } catch (e: any) {
+          toast.error(e?.message ?? 'Avatar remove failed');
+        }
       }
 
-      return updateProfile({ displayName: displayName || undefined, avatarUrl: finalAvatarUrl });
+      const updated = await updateProfile(
+        { displayName: displayName || undefined, avatarUrl: finalAvatarUrl },
+        currentEtag ?? undefined
+      );
+      setEtag(updated.etag ?? null);
+      return updated.profile;
     },
     onSuccess: (u) => {
       const prevDisplayName = user?.displayName ?? '';
