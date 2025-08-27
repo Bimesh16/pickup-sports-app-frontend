@@ -170,6 +170,7 @@ function GameCard({
         <Link href={`/(tabs)/game/${game.id}`} asChild>
           <Pressable
             accessibilityLabel={`Open ${game.title}`}
+            accessibilityRole="link"
             style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1.0, flex: 1 }]}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -182,6 +183,7 @@ function GameCard({
         </Link>
         <Pressable
           accessibilityLabel="Share game"
+          accessibilityRole="button"
           hitSlop={10}
           onPress={share}
           onLongPress={copyLink}
@@ -369,6 +371,7 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
             }}
             style={({ pressed }) => [{ alignSelf: 'flex-start', backgroundColor: '#e5e7eb', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, opacity: pressed ? 0.7 : 1 }]}
             accessibilityLabel="Clear filters"
+            accessibilityRole="button"
           >
             <Text>Clear filters ✕</Text>
           </Pressable>
