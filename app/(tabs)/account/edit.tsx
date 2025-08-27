@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View as RNView } from 'react-native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
 import { Text, View } from '@/components/Themed';
@@ -22,6 +23,10 @@ export default function EditProfileScreen() {
   const toast = useToast();
   const router = useRouter();
   const [saved, setSaved] = useState(false);
+  const [displayNameBlurred, setDisplayNameBlurred] = useState(false);
+  const [avatarUrlBlurred, setAvatarUrlBlurred] = useState(false);
+  const [displayNameSaved, setDisplayNameSaved] = useState(false);
+  const [avatarUrlSaved, setAvatarUrlSaved] = useState(false);
 
   useEffect(() => {
     // refresh from server on mount to ensure latest
@@ -70,6 +75,11 @@ export default function EditProfileScreen() {
       return updateProfile({ displayName: displayName || undefined, avatarUrl: finalAvatarUrl });
     },
     onSuccess: (u) => {
+      const prevDisplayName = user?.displayName ?? '';
+      const prevAvatarUrl = user?.avatarUrl ?? '';
+      const changedDisplayName = displayName !== prevDisplayName;
+      const changedAvatarUrl = (avatarUrl ?? '') !== (prevAvatarUrl ?? '');
+
       // Reflect latest user data in form
       setUser(u);
       setDisplayName(u.displayName ?? '');
@@ -80,6 +90,9 @@ export default function EditProfileScreen() {
       toast.success('Profile updated');
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+
+      setDisplayNameSaved(changedDisplayName);
+      setAvatarUrlSaved(changedAvatarUrl);
     },
     onError: (e: any) => toast.error(e?.message ?? 'Update failed'),
   });
@@ -110,7 +123,7 @@ export default function EditProfileScreen() {
         ) : null}
         <RNView style={{ alignItems: 'center', marginBottom: 12, gap: 8 }}>
         <Avatar name={displayName || user?.username || ''} uri={(pickedUri ?? avatarUrl) || undefined} size={72} />
-        <AvatarPicker onPicked={(uri) => setPickedUri(uri)} />
+        <AvatarPicker onPicked={(uri) => { setPickedUri(uri); setAvatarUrlSaved(false); setAvatarUrlBlurred(false); }} />
         {(pickedUri || avatarUrl) ? (
           <Button
             title="Remove photo"
@@ -119,7 +132,7 @@ export default function EditProfileScreen() {
               import('react-native').then(({ Alert }) => {
                 Alert.alert('Remove photo', 'Are you sure you want to remove your photo?', [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Remove', style: 'destructive', onPress: () => { setPickedUri(null); setAvatarUrl(''); } },
+                  { text: 'Remove', style: 'destructive', onPress: () => { setPickedUri(null); setAvatarUrl(''); setAvatarUrlSaved(false); setAvatarUrlBlurred(false); } },
                 ]);
               });
             }}
@@ -139,18 +152,38 @@ export default function EditProfileScreen() {
       <FormField
         label="Display name"
         value={displayName}
-        onChangeText={setDisplayName}
+        onChangeText={(t) => {
+          setDisplayName(t);
+          setDisplayNameSaved(false);
+          setDisplayNameBlurred(false);
+        }}
+        onBlur={() => setDisplayNameBlurred(true)}
         placeholder="Your name"
         error={nameError || undefined}
+        rightElement={
+          displayNameSaved && displayNameBlurred ? (
+            <FontAwesome name="check" size={16} color="#16a34a" />
+          ) : undefined
+        }
       />
 
       <FormField
         label="Avatar URL"
         value={avatarUrl ?? ''}
-        onChangeText={setAvatarUrl}
+        onChangeText={(t) => {
+          setAvatarUrl(t);
+          setAvatarUrlSaved(false);
+          setAvatarUrlBlurred(false);
+        }}
+        onBlur={() => setAvatarUrlBlurred(true)}
         placeholder="https://..."
         autoCapitalize="none"
         error={urlError || undefined}
+        rightElement={
+          avatarUrlSaved && avatarUrlBlurred ? (
+            <FontAwesome name="check" size={16} color="#16a34a" />
+          ) : undefined
+        }
       />
 
       <RNView style={{ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
@@ -167,6 +200,10 @@ export default function EditProfileScreen() {
             setAvatarUrl(user?.avatarUrl ?? '');
             setPickedUri(null);
             setUploadProgress(0);
+            setDisplayNameSaved(false);
+            setAvatarUrlSaved(false);
+            setDisplayNameBlurred(false);
+            setAvatarUrlBlurred(false);
           }}
           disabled={!changed || mutation.isPending}
         />
