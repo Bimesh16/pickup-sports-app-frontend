@@ -35,6 +35,9 @@ describe('gameValidation', () => {
   });
 
   test('validateCreateGame requires title and future date', () => {
+    const fixedNow = new Date('2030-01-01T00:00:00Z').getTime();
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(fixedNow);
+
     const past = new Date(Date.now() - 60_000).toISOString();
     const { errors: e1, valid: v1 } = validateCreateGame({ title: '', startsAt: past, maxPlayers: '' });
     expect(v1).toBe(false);
@@ -46,6 +49,8 @@ describe('gameValidation', () => {
     expect(v2).toBe(true);
     expect(e2.title).toBeUndefined();
     expect(e2.startsAt).toBeUndefined();
+
+    nowSpy.mockRestore();
   });
 
   test('validateCreateGame validates positive maxPlayers', () => {
