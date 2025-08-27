@@ -1,5 +1,5 @@
 import { api } from '@/src/api/client';
-import type { CreateGameInput, Game } from './types';
+import type { CreateGameInput, Game, Participant } from './types';
 
 export async function fetchGames(): Promise<Game[]> {
   const { data } = await api.get('/games', { headers: { 'Cache-Control': 'no-store' } });
@@ -50,7 +50,48 @@ export async function joinGame(id: string): Promise<void> {
 }
 
 export async function leaveGame(id: string): Promise<void> {
-  await api.post(`/games/${id}/leave`, null, { headers: { 'Cache-Control': 'no-store' } });
+  await api.delete(`/games/${id}/leave`, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function rsvpGame(id: string): Promise<void> {
+  await api.post(`/games/${id}/rsvp`, null, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function unrsvpGame(id: string): Promise<void> {
+  await api.delete(`/games/${id}/unrsvp`, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function holdGame(id: string): Promise<void> {
+  await api.post(`/games/${id}/hold`, null, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function confirmGame(id: string): Promise<void> {
+  await api.post(`/games/${id}/confirm`, null, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function fetchWaitlist(id: string): Promise<Participant[]> {
+  const { data } = await api.get(`/games/${id}/waitlist`, { headers: { 'Cache-Control': 'no-store' } });
+  return Array.isArray(data) ? (data as Participant[]) : [];
+}
+
+export async function promoteFromWaitlist(gameId: string, userId: string): Promise<void> {
+  await api.post(`/games/${gameId}/waitlist/${userId}/promote`, null, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function lockGame(id: string): Promise<void> {
+  await api.post(`/games/admin/${id}/lock`, null, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function unlockGame(id: string): Promise<void> {
+  await api.delete(`/games/admin/${id}/lock`, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function addCohost(gameId: string, userId: string): Promise<void> {
+  await api.post(`/games/admin/${gameId}/cohosts/${userId}`, null, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+export async function removeCohost(gameId: string, userId: string): Promise<void> {
+  await api.delete(`/games/admin/${gameId}/cohosts/${userId}`, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function createGame(input: CreateGameInput): Promise<Game> {
