@@ -30,7 +30,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="list" color={color} />,
           headerRight: () => (
             <Link href="/modal" asChild>
-              <Pressable>
+              <Pressable accessibilityLabel="About" accessibilityRole="link">
                 {({ pressed }) => (
                   <FontAwesome
                     name="info-circle"

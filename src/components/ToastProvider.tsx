@@ -75,8 +75,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             { opacity, transform: [{ translateY }] },
           ]}
         >
-          <View style={[styles.toast, { backgroundColor: bg }]}>
-            <Text style={styles.text}>{message}</Text>
+          <View style={[styles.toast, { backgroundColor: bg }]}> 
+            <Text style={styles.text} allowFontScaling numberOfLines={2}>
+              {message}
+            </Text>
           </View>
         </Animated.View>
       ) : null}
