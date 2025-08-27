@@ -1,11 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import Banner from './Banner';
 
+type OnlineListener = () => void;
+const onlineListeners = new Set<OnlineListener>();
+
+export function onOnline(listener: OnlineListener): () => void {
+  onlineListeners.add(listener);
+  return () => onlineListeners.delete(listener);
+}
+
+function emitOnline() {
+  onlineListeners.forEach((l) => {
+    try {
+      l();
+    } catch {
+      // Ignore listener errors
+    }
+  });
+}
+
 export function useOnline() {
   const [online, setOnline] = useState(true);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
+
+    const update = (next: boolean) => {
+      setOnline((prev) => {
+        if (!prev && next) emitOnline();
+        return next;
+      });
+    };
 
     // Try optional NetInfo without triggering Metro static resolution
     const modName = '@react-native-community/netinfo';
@@ -20,12 +45,12 @@ export function useOnline() {
 
     if (NetInfo?.addEventListener) {
       const sub = NetInfo.addEventListener((state: any) => {
-        setOnline(!!state?.isConnected && !!state?.isInternetReachable);
+        update(!!state?.isConnected && !!state?.isInternetReachable);
       });
       unsubscribe = () => sub && sub();
     } else if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       // Web fallback
-      const handler = () => setOnline((navigator as any).onLine !== false);
+      const handler = () => update((navigator as any).onLine !== false);
       handler();
       window.addEventListener('online', handler);
       window.addEventListener('offline', handler);
@@ -35,7 +60,7 @@ export function useOnline() {
       };
     } else {
       // No detection available; assume online to avoid blocking UX
-      setOnline(true);
+      update(true);
     }
 
     return () => {
