@@ -10,10 +10,8 @@ import { InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query
 import { Text, View } from '@/components/Themed';
 import EmptyState from '@/src/components/EmptyState';
 import { SkeletonCard } from '@/src/components/Skeleton';
-import { useToast } from '@/src/components/ToastProvider';
 import { joinGame, leaveGame } from '@/src/features/games/api';
 import type { Game } from '@/src/features/games/types';
-import { usePrefs } from '@/src/stores/prefs';
 import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
 import { useOnline } from '@/src/components/OfflineBanner';
 import { useInfiniteGames } from '@/src/features/games/hooks/useInfiniteGames';
