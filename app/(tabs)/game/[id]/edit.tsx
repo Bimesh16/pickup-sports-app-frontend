@@ -8,6 +8,7 @@ import { useToast } from '@/src/components/ToastProvider';
 import { useGame } from '@/src/features/games/hooks/useGame';
 import { updateGame } from '@/src/features/games/api';
 import type { CreateGameInput } from '@/src/features/games/types';
+import SportSelector from '@/src/features/games/components/SportSelector';
 
 export default function EditGameScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -17,6 +18,7 @@ export default function EditGameScreen() {
 
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
+  const [sport, setSport] = useState('');
   const [startsAt, setStartsAt] = useState('');
   const [maxPlayers, setMaxPlayers] = useState<string>('');
   const [description, setDescription] = useState('');
@@ -26,6 +28,7 @@ export default function EditGameScreen() {
     if (data) {
       setTitle((v) => (v ? v : data.title || ''));
       setLocation((v) => (v ? v : data.location || ''));
+      setSport((v) => (v ? v : data.sport || ''));
       setStartsAt((v) => (v ? v : data.startsAt || ''));
       setMaxPlayers((v) => (v ? v : (data.maxPlayers ? String(data.maxPlayers) : '')));
       setDescription((v) => (v ? v : data.description || ''));
@@ -53,6 +56,7 @@ export default function EditGameScreen() {
     const body: Partial<CreateGameInput> = {
       title,
       location: location || undefined,
+      sport: sport || undefined,
       startsAt,
       maxPlayers: maxPlayers ? Number(maxPlayers) : undefined,
       description: description || undefined,
@@ -78,6 +82,9 @@ export default function EditGameScreen() {
       </RNView>
       <RNView style={styles.formRow}>
         <TextInput style={styles.input} placeholder="Location" value={location} onChangeText={setLocation} />
+      </RNView>
+      <RNView style={styles.formRow}>
+        <SportSelector value={sport} onChange={setSport} />
       </RNView>
       <RNView style={styles.formRow}>
         <DateTimeField value={startsAt} onChange={setStartsAt} />

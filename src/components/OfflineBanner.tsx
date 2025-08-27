@@ -1,12 +1,42 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet } from 'react-native';
 import { Text, View } from '@/components/Themed';
+import { spacing, radius } from '@/constants/Spacing';
+
+const AnimatedView = Animated.createAnimatedComponent(View);
+import React, { useEffect, useState } from 'react';
+import Banner from './Banner';
+
+type OnlineListener = () => void;
+const onlineListeners = new Set<OnlineListener>();
+
+export function onOnline(listener: OnlineListener): () => void {
+  onlineListeners.add(listener);
+  return () => onlineListeners.delete(listener);
+}
+
+function emitOnline() {
+  onlineListeners.forEach((l) => {
+    try {
+      l();
+    } catch {
+      // Ignore listener errors
+    }
+  });
+}
 
 export function useOnline() {
   const [online, setOnline] = useState(true);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
+
+    const update = (next: boolean) => {
+      setOnline((prev) => {
+        if (!prev && next) emitOnline();
+        return next;
+      });
+    };
 
     // Try optional NetInfo without triggering Metro static resolution
     const modName = '@react-native-community/netinfo';
@@ -21,12 +51,12 @@ export function useOnline() {
 
     if (NetInfo?.addEventListener) {
       const sub = NetInfo.addEventListener((state: any) => {
-        setOnline(!!state?.isConnected && !!state?.isInternetReachable);
+        update(!!state?.isConnected && !!state?.isInternetReachable);
       });
       unsubscribe = () => sub && sub();
     } else if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       // Web fallback
-      const handler = () => setOnline((navigator as any).onLine !== false);
+      const handler = () => update((navigator as any).onLine !== false);
       handler();
       window.addEventListener('online', handler);
       window.addEventListener('offline', handler);
@@ -36,7 +66,7 @@ export function useOnline() {
       };
     } else {
       // No detection available; assume online to avoid blocking UX
-      setOnline(true);
+      update(true);
     }
 
     return () => {
@@ -49,12 +79,38 @@ export function useOnline() {
 
 export default function OfflineBanner() {
   const online = useOnline();
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!online) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      opacity.setValue(0);
+    }
+  }, [online, opacity]);
+
   if (online) return null;
   return (
+    <AnimatedView
+      style={[styles.bar, { opacity }]}
+      lightColor="#dc2626"
+      darkColor="#b91c1c"
+    >
+      <Text style={styles.text} lightColor="#fff" darkColor="#fee2e2">
+        You’re offline
+      </Text>
+    </AnimatedView>
     <View style={styles.bar}>
-      <Text style={styles.text}>You’re offline</Text>
+      <Text style={styles.text} allowFontScaling numberOfLines={1}>
+        You’re offline
+      </Text>
     </View>
   );
+  return <Banner text="You’re offline" backgroundColor="#dc2626" />;
 }
 
 const styles = StyleSheet.create({
@@ -62,11 +118,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 50,
     alignSelf: 'center',
-    backgroundColor: '#dc2626',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
     zIndex: 1000,
   },
-  text: { color: '#fff' },
+  text: {},
 });
