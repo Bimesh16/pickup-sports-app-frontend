@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, Pressable, RefreshControl, Share, StyleSheet, TextInput, View as RNView } from 'react-native';
+import {
+  ActivityIndicator,
+  Button,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  Share,
+  StyleSheet,
+  TextInput,
+  View as RNView,
+} from 'react-native';
 import { Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -10,14 +20,13 @@ import { InfiniteData, useMutation, useQueryClient } from '@tanstack/react-query
 import { Text, View } from '@/components/Themed';
 import EmptyState from '@/src/components/EmptyState';
 import { SkeletonCard } from '@/src/components/Skeleton';
-import { useToast } from '@/src/components/ToastProvider';
 import { joinGame, leaveGame } from '@/src/features/games/api';
 import type { Game } from '@/src/features/games/types';
-import { usePrefs } from '@/src/stores/prefs';
 import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
 import { useOnline } from '@/src/components/OfflineBanner';
 import { useInfiniteGames } from '@/src/features/games/hooks/useInfiniteGames';
 import { useAuthStore } from '@/src/stores/auth';
+import { spacing, radius } from '@/constants/Spacing';
 
 type Props = {
   initialShowJoined?: boolean;
@@ -410,19 +419,31 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
               ) : null
             }
             ListHeaderComponent={
-              <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+              <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.md }}>
                 {!online ? (
-                  <RNView style={styles.pillWarning}>
-                    <Text style={styles.pillWarningText}>You’re offline. Join/Leave is disabled.</Text>
-                  </RNView>
+                  <View
+                    style={styles.pillWarning}
+                    lightColor="#f3f4f6"
+                    darkColor="#374151"
+                  >
+                    <Text style={styles.pillWarningText} lightColor="#374151" darkColor="#f3f4f6">
+                      You’re offline. Join/Leave is disabled.
+                    </Text>
+                  </View>
                 ) : null}
                 {isError ? (
-                  <RNView style={{ marginTop: 8, marginBottom: 4 }}>
-                    <RNView style={styles.pillError}>
-                      <Text style={styles.pillErrorText}>{(error as any)?.message ?? 'Some games may be out of date.'}</Text>
-                    </RNView>
+                  <View style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>
+                    <View
+                      style={styles.pillError}
+                      lightColor="#fee2e2"
+                      darkColor="#7f1d1d"
+                    >
+                      <Text style={styles.pillErrorText} lightColor="#991b1b" darkColor="#fee2e2">
+                        {(error as any)?.message ?? 'Some games may be out of date.'}
+                      </Text>
+                    </View>
                     <Button title={isRefetching ? 'Retrying…' : 'Retry now'} onPress={() => refetch()} />
-                  </RNView>
+                  </View>
                 ) : null}
               </View>
             }
@@ -474,18 +495,16 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
   pillWarning: {
     alignSelf: 'flex-start',
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
   },
-  pillWarningText: { color: '#374151' },
+  pillWarningText: {},
   pillError: {
     alignSelf: 'flex-start',
-    backgroundColor: '#fee2e2',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
   },
-  pillErrorText: { color: '#991b1b' },
+  pillErrorText: {},
 });
