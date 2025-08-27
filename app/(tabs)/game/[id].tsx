@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Button,
-    FlatList,
-    Platform,
-    Pressable,
-    RefreshControl,
-    Share,
-    StyleSheet,
-    View as RNView
+  ActionSheetIOS,
+  ActivityIndicator,
+  Button,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  Share,
+  StyleSheet,
+  View as RNView,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Linking from 'expo-linking';
@@ -26,6 +27,7 @@ import { createInvite, deleteGame, joinGame, leaveGame } from '@/src/features/ga
 import { useAuthStore } from '@/src/stores/auth';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { useOnline } from '@/src/components/OfflineBanner';
+import type { Participant } from '@/src/features/games/types';
 
 export default function GameDetailsScreen() {
   const { id, autojoin } = useLocalSearchParams<{ id?: string; autojoin?: string }>();
@@ -388,6 +390,7 @@ function SkeletonParticipant() {
 
 function ParticipantsSection({ gameId }: { gameId: string }) {
   const { data, isLoading, isError, error, refetch, isRefetching } = useParticipants(gameId);
+  const [selected, setSelected] = useState<Participant | null>(null);
 
   return (
     <View>
@@ -413,32 +416,45 @@ function ParticipantsSection({ gameId }: { gameId: string }) {
           data={data}
           keyExtractor={(p, i) => p.id ?? `${p.username}-${i}`}
           renderItem={({ item }) => (
-            <View style={styles.participantRow}>
-              <Avatar name={item.displayName || item.username} uri={item.avatarUrl ?? undefined} size={32} />
-              <Text style={styles.participantName}>{item.displayName || item.username}</Text>
-            </View>
+            <Pressable onPress={() => setSelected(item)}>
+              <View style={styles.participantRow}>
+                <Avatar name={item.displayName || item.username} uri={item.avatarUrl ?? undefined} size={32} />
+                <Text style={styles.participantName}>{item.displayName || item.username}</Text>
+              </View>
+            </Pressable>
           )}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         />
       )}
-    </View>
-  );
-}
-
-  return (
-    <View>
-      <Text style={styles.sectionTitle}>Participants</Text>
-      <FlatList
-        data={data}
-        keyExtractor={(p, i) => p.id ?? `${p.username}-${i}`}
-        renderItem={({ item }) => (
-          <View style={styles.participantRow}>
-            <Avatar name={item.displayName || item.username} uri={item.avatarUrl ?? undefined} size={32} />
-            <Text style={styles.participantName}>{item.displayName || item.username}</Text>
+      <Modal
+        visible={!!selected}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelected(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {selected ? (
+              <>
+                <Avatar
+                  name={selected.displayName || selected.username}
+                  uri={selected.avatarUrl ?? undefined}
+                  size={64}
+                />
+                <Text style={styles.modalName}>
+                  {selected.displayName || selected.username}
+                </Text>
+                <View style={{ height: 16 }} />
+                <Button title="Action 1" onPress={() => {}} />
+                <View style={{ height: 8 }} />
+                <Button title="Action 2" onPress={() => {}} />
+                <View style={{ height: 8 }} />
+                <Button title="Close" onPress={() => setSelected(null)} />
+              </>
+            ) : null}
           </View>
-        )}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-      />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -451,4 +467,17 @@ const styles = StyleSheet.create({
   participantRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   participantName: { fontSize: 14 },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#eee', marginVertical: 8 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    alignItems: 'center',
+  },
+  modalName: { fontSize: 16, fontWeight: '600', marginTop: 8 },
 });
