@@ -25,7 +25,7 @@ import { useParticipants } from '@/src/features/games/hooks/useParticipants';
 import { createInvite, deleteGame, joinGame, leaveGame } from '@/src/features/games/api';
 import { useAuthStore } from '@/src/stores/auth';
 import { confirm } from '@/src/components/ConfirmDialog';
-import { useOnline } from '@/src/components/OfflineBanner';
+import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 
 export default function GameDetailsScreen() {
   const { id, autojoin } = useLocalSearchParams<{ id?: string; autojoin?: string }>();
@@ -71,6 +71,17 @@ export default function GameDetailsScreen() {
   };
 
   const toast = useToast();
+
+  useEffect(() => {
+    const unsub = onOnline(async () => {
+      await Promise.all([
+        refetch(),
+        qc.refetchQueries({ queryKey: ['game', id, 'participants'] }),
+      ]);
+      toast.success('Updated');
+    });
+    return unsub;
+  }, [refetch, qc, id, toast]);
 
   const openOwnerMenu = () => {
     if (!id) return;

@@ -15,7 +15,7 @@ import { joinGame, leaveGame } from '@/src/features/games/api';
 import type { Game } from '@/src/features/games/types';
 import { usePrefs } from '@/src/stores/prefs';
 import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
-import { useOnline } from '@/src/components/OfflineBanner';
+import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 import { useInfiniteGames } from '@/src/features/games/hooks/useInfiniteGames';
 import { useAuthStore } from '@/src/stores/auth';
 
@@ -241,6 +241,15 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
   });
   const { join, leave, joinPendingId, leavePendingId } = useJoinLeaveOptimistic();
   const online = useOnline();
+  const toast = useToast();
+
+  useEffect(() => {
+    const unsub = onOnline(async () => {
+      await refetch();
+      toast.success('Updated');
+    });
+    return unsub;
+  }, [refetch, toast]);
 
   // Keep prefs in sync (after hydration)
   useEffect(() => {
