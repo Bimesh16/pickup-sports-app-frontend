@@ -253,6 +253,21 @@ export default function GameDetailsScreen() {
               >
                 <FontAwesome name="user-plus" size={20} />
               </Pressable>
+              <Pressable
+                onPress={async () => {
+                  try {
+                    const { url } = await createInvite(id as string);
+                    const copied = await copyToClipboard(url);
+                    if (copied) toast.info('Invite link copied');
+                  } catch (e: any) {
+                    toast.error(e?.message ?? 'Invite failed');
+                  }
+                }}
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                accessibilityLabel="Copy invite link"
+              >
+                <FontAwesome name="copy" size={20} />
+              </Pressable>
               {isOwner ? (
                 <Pressable
                   onPress={openOwnerMenu}
