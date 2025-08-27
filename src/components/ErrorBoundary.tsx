@@ -15,8 +15,11 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   static getDerivedStateFromError() {
     return { hasError: true };
   }
-  componentDidCatch() {
-    // no-op, could log to monitoring
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    if (process.env.NODE_ENV !== 'production') {
+      // Temporary logging until monitoring (e.g., Sentry) is added
+      console.error(error, errorInfo.componentStack);
+    }
   }
   render() {
     if (this.state.hasError) {
