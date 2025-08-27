@@ -1,5 +1,9 @@
 import React, { useEffect } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, setTokens } from '@/src/api/client';
 import { useAuthStore } from '@/src/stores/auth';
 import { ToastProvider } from '@/src/components/ToastProvider';
@@ -18,6 +22,9 @@ try {
 } catch {
   // ignore – Sentry is optional for local development/tests
 }
+const persister = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+  ? createSyncStoragePersister({ storage: window.localStorage })
+  : createAsyncStoragePersister({ storage: AsyncStorage });
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,10 +64,21 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   }, [setUser]);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister,
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) => {
+            const key = query.queryKey[0];
+            return key === 'games' || key === 'game';
+          },
+        },
+      }}
+    >
       <ToastProvider>
         {children}
       </ToastProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
