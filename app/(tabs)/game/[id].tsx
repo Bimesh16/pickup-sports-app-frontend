@@ -294,6 +294,11 @@ export default function GameDetailsScreen() {
           <Text style={{ color: '#991b1b' }}>This game is full. You can still open it to see details.</Text>
         </View>
       ) : null}
+      {isFull && isOwner ? (
+        <View style={{ backgroundColor: '#fef3c7', padding: 8, borderRadius: 6, marginTop: 6 }}>
+          <Text style={{ color: '#92400e' }}>Owner can increase max players</Text>
+        </View>
+      ) : null}
       {data.description ? (
         <>
           <View style={styles.separator} />
