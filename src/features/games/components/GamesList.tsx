@@ -235,7 +235,18 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, [showJoined, timeFilter]);
 
-  const { data, isLoading, isError, error, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteGames({
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    dataUpdatedAt,
+  } = useInfiniteGames({
     q: debouncedQuery || undefined,
     joined: showJoined || undefined,
   });
@@ -275,6 +286,18 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
       [g.title, g.location, g.sport, g.description].some((v) => (v ?? '').toLowerCase().includes(q))
     );
   }, [all, showJoined, debouncedQuery, timeFilter]);
+
+  const updatedMinutesAgo = useMemo(() => {
+    if (!dataUpdatedAt) return 0;
+    return Math.floor((Date.now() - dataUpdatedAt) / 60000);
+  }, [dataUpdatedAt]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      refetch();
+    }, 3 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [refetch]);
 
   if (isLoading && !data) {
     return (
@@ -423,6 +446,11 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
                     </RNView>
                     <Button title={isRefetching ? 'Retrying…' : 'Retry now'} onPress={() => refetch()} />
                   </RNView>
+                ) : null}
+                {!isLoading && !isRefetching ? (
+                  <Text style={{ marginTop: 4, color: '#6b7280' }}>
+                    Updated {updatedMinutesAgo} min ago
+                  </Text>
                 ) : null}
               </View>
             }
