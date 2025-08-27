@@ -8,6 +8,20 @@ import { api, setTokens } from '@/src/api/client';
 import { useAuthStore } from '@/src/stores/auth';
 import { ToastProvider } from '@/src/components/ToastProvider';
 
+// Initialize Sentry if available. We dynamically require the SDK so that the
+// application still works in environments where the dependency is not
+// installed (e.g. tests).
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Sentry: any = require('@sentry/react-native');
+  Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    tracesSampleRate: 1.0,
+    profilesSampleRate: 1.0,
+  });
+} catch {
+  // ignore – Sentry is optional for local development/tests
+}
 const persister = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
   ? createSyncStoragePersister({ storage: window.localStorage })
   : createAsyncStoragePersister({ storage: AsyncStorage });
