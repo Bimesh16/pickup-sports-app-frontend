@@ -113,6 +113,9 @@ function Chip({
 }) {
   return (
     <View style={{ backgroundColor: color, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginLeft: 8 }}>
+      <Text style={{ fontSize: 12 }} allowFontScaling numberOfLines={1} adjustsFontSizeToFit>
+        {text}
+      </Text>
       <Text style={{ fontSize: 12, color: textColor }}>{text}</Text>
     </View>
   );
@@ -182,6 +185,17 @@ function GameCard({
             style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1.0, flex: 1 }]}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text
+                style={styles.cardTitle}
+                numberOfLines={1}
+                allowFontScaling
+                adjustsFontSizeToFit
+              >
+                {game.title}
+              </Text>
+              {joined ? <Chip text="Joined" color="#d1fae5" /> : null}
+              {isOwner ? <Chip text="Owner" color="#e0e7ff" /> : null}
+              {isFull ? <Chip text="Full" color="#fee2e2" /> : null}
               <Text style={styles.cardTitle} numberOfLines={1}>{game.title}</Text>
               {joined ? (
                 <Chip text="Joined" color="#d1fae5" textColor="#065f46" />
@@ -207,25 +221,33 @@ function GameCard({
         </Pressable>
       </View>
 
-      {game.location ? <Text>{game.location}</Text> : null}
-      <Text>{when}</Text>
+      {game.location ? (
+        <Text allowFontScaling numberOfLines={1}>
+          {game.location}
+        </Text>
+      ) : null}
+      <Text allowFontScaling numberOfLines={1}>{when}</Text>
       {typeof game.playersCount === 'number' && typeof game.maxPlayers === 'number' ? (
         <>
-          <Text>{game.playersCount} / {game.maxPlayers} players</Text>
+          <Text allowFontScaling>
+            {game.playersCount} / {game.maxPlayers} players
+          </Text>
           {(() => {
             const left = Math.max(game.maxPlayers - game.playersCount, 0);
             const low = left <= 2;
             const full = left === 0;
             const color = full ? '#991b1b' : low ? '#92400e' : '#374151';
             return (
-              <Text style={{ color }}>
+              <Text style={{ color }} allowFontScaling numberOfLines={1}>
                 {full ? 'Full' : left === 1 ? '1 slot left' : `${left} slots left`}
               </Text>
             );
           })()}
         </>
       ) : null}
-      {game.sport ? <Text>{game.sport}</Text> : null}
+      {game.sport ? (
+        <Text allowFontScaling numberOfLines={1}>{game.sport}</Text>
+      ) : null}
 
       <RNView style={{ height: 8 }} />
       <Button
@@ -387,7 +409,7 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
             accessibilityLabel="Clear filters"
             accessibilityRole="button"
           >
-            <Text>Clear filters ✕</Text>
+            <Text allowFontScaling numberOfLines={1}>Clear filters ✕</Text>
           </Pressable>
         </RNView>
       ) : null}
@@ -409,7 +431,13 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
               const isOwner = !!(user && item.createdBy?.username && user.username === item.createdBy.username);
               const pending = joinPendingId === item.id || leavePendingId === item.id;
               return (
-                <ErrorBoundary fallback={<View style={[styles.card, { alignItems: 'center' }]}><Text>Unable to render item</Text></View>}>
+                <ErrorBoundary
+                  fallback={
+                    <View style={[styles.card, { alignItems: 'center' }]}> 
+                      <Text allowFontScaling numberOfLines={1}>Unable to render item</Text>
+                    </View>
+                  }
+                >
                   <GameCard
                     game={item}
                     onJoin={(id) => join.mutate(id)}
@@ -439,13 +467,17 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
               <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
                 {!online ? (
                   <RNView style={styles.pillWarning}>
-                    <Text style={styles.pillWarningText}>You’re offline. Join/Leave is disabled.</Text>
+                    <Text style={styles.pillWarningText} allowFontScaling numberOfLines={2}>
+                      You’re offline. Join/Leave is disabled.
+                    </Text>
                   </RNView>
                 ) : null}
                 {isError ? (
                   <RNView style={{ marginTop: 8, marginBottom: 4 }}>
                     <RNView style={styles.pillError}>
-                      <Text style={styles.pillErrorText}>{(error as any)?.message ?? 'Some games may be out of date.'}</Text>
+                      <Text style={styles.pillErrorText} allowFontScaling numberOfLines={2}>
+                        {(error as any)?.message ?? 'Some games may be out of date.'}
+                      </Text>
                     </RNView>
                     <Button title={isRefetching ? 'Retrying…' : 'Retry now'} onPress={() => refetch()} />
                   </RNView>

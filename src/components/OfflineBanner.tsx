@@ -74,5 +74,12 @@ export function useOnline() {
 export default function OfflineBanner() {
   const online = useOnline();
   if (online) return null;
+  return (
+    <View style={styles.bar}>
+      <Text style={styles.text} allowFontScaling numberOfLines={1}>
+        You’re offline
+      </Text>
+    </View>
+  );
   return <Banner text="You’re offline" backgroundColor="#dc2626" />;
 }
