@@ -407,6 +407,12 @@ export default function GameDetailsScreen() {
         disabled={join.isPending || leave.isPending || !online || (isFull && !joined)}
       />
 
+      <View style={{ height: 16 }} />
+      <Button
+        title="Rate game"
+        onPress={() => router.push(`/(tabs)/game/${id}/rate`)}
+      />
+
       {isOwner ? (
         <>
           <View style={{ height: 16 }} />
