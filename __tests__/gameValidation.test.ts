@@ -17,6 +17,23 @@ describe('gameValidation', () => {
     expect(d).toBeNull();
   });
 
+  // These tests assume the process timezone is set to a zone with DST,
+  // e.g. run with `TZ=America/New_York`.
+  describe('parseLocalDateTime DST edge cases', () => {
+    test('handles nonexistent times by rolling forward', () => {
+      const d = parseLocalDateTime('2021-03-14T02:30');
+      expect(d).toBeInstanceOf(Date);
+      expect(d?.toISOString()).toBe('2021-03-14T07:30:00.000Z');
+    });
+
+    test('handles ambiguous times by choosing first instance', () => {
+      const d = parseLocalDateTime('2021-11-07T01:30');
+      expect(d).toBeInstanceOf(Date);
+      // First 01:30 occurs in EDT (UTC-4)
+      expect(d?.toISOString()).toBe('2021-11-07T05:30:00.000Z');
+    });
+  });
+
   test('validateCreateGame requires title and future date', () => {
     const past = new Date(Date.now() - 60_000).toISOString();
     const { errors: e1, valid: v1 } = validateCreateGame({ title: '', startsAt: past, maxPlayers: '' });
