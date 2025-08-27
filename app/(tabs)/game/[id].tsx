@@ -211,7 +211,12 @@ export default function GameDetailsScreen() {
           title: data.title || 'Game',
           headerRight: () => (
             <RNView style={{ flexDirection: 'row', gap: 16, paddingRight: 8 }}>
-              <Pressable onPress={onShare} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })} accessibilityLabel="Share">
+              <Pressable
+                onPress={onShare}
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                accessibilityLabel="Share"
+                accessibilityRole="button"
+              >
                 <FontAwesome name="share-alt" size={20} />
               </Pressable>
               <Pressable
@@ -222,6 +227,7 @@ export default function GameDetailsScreen() {
                 }}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                 accessibilityLabel="Copy link"
+                accessibilityRole="button"
               >
                 <FontAwesome name="link" size={20} />
               </Pressable>
@@ -229,6 +235,7 @@ export default function GameDetailsScreen() {
                 onPress={() => router.push(`/(tabs)/game/${id}/qr`)}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                 accessibilityLabel="Show QR code"
+                accessibilityRole="button"
               >
                 <FontAwesome name="qrcode" size={20} />
               </Pressable>
@@ -250,6 +257,7 @@ export default function GameDetailsScreen() {
                 }}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                 accessibilityLabel="Invite players"
+                accessibilityRole="button"
               >
                 <FontAwesome name="user-plus" size={20} />
               </Pressable>
