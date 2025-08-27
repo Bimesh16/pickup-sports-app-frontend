@@ -1,4 +1,94 @@
+import {describe} from "node:test";
 import { parseLocalDateTime, validateCreateGame } from '@/src/utils/gameValidation';
+
+const ORIGINAL_TZ = process.env.TZ;
+const OriginalDate = Date;
+
+let parseLocalDateTime: typeof import('@/src/utils/gameValidation').parseLocalDateTime;
+let validateCreateGame: typeof import('@/src/utils/gameValidation').validateCreateGame;
+
+function mockTimezone(tz: string) {
+  const RealDate = OriginalDate;
+  function MockDate(this: any, ...args: any[]) {
+    if (!(this instanceof MockDate)) {
+      // Called without `new`
+      // @ts-ignore
+      return RealDate();
+    }
+    if (args.length >= 3) {
+      const [y, m, d, h = 0, mi = 0, s = 0, ms = 0] = args.map(Number);
+      const utcMillis = RealDate.UTC(y, m, d, h, mi, s, ms);
+      const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+      const parts = fmt.formatToParts(new RealDate(utcMillis));
+      const vals: Record<string, number> = {};
+      for (const p of parts) {
+        if (p.type !== 'literal') vals[p.type] = Number(p.value);
+      }
+      const tzLocalMillis = RealDate.UTC(
+        vals.year!,
+        vals.month! - 1,
+        vals.day!,
+        vals.hour!,
+        vals.minute!,
+        vals.second!
+      );
+      const offset = tzLocalMillis - utcMillis;
+      return new RealDate(utcMillis - offset);
+    }
+    // @ts-ignore
+    return new RealDate(...args);
+  }
+  MockDate.prototype = RealDate.prototype;
+  MockDate.now = RealDate.now.bind(RealDate);
+  MockDate.parse = (str: string) => {
+    const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:Z)?$/);
+    if (m && !str.endsWith('Z')) {
+      const [, y, mo, d, h, mi, s] = m;
+      return new (global as any).Date(
+        Number(y),
+        Number(mo) - 1,
+        Number(d),
+        Number(h),
+        Number(mi),
+        s ? Number(s) : 0,
+        0
+      ).getTime();
+    }
+    return RealDate.parse(str);
+  };
+  MockDate.UTC = RealDate.UTC.bind(RealDate);
+  // @ts-ignore
+  global.Date = MockDate;
+}
+
+function resetTimezoneMock() {
+  // @ts-ignore
+  global.Date = OriginalDate;
+}
+
+beforeAll(() => {
+  process.env.TZ = 'America/New_York';
+  mockTimezone('America/New_York');
+  ({ parseLocalDateTime, validateCreateGame } = require('@/src/utils/gameValidation'));
+});
+
+afterAll(() => {
+  resetTimezoneMock();
+  if (ORIGINAL_TZ === undefined) {
+    delete process.env.TZ;
+  } else {
+    process.env.TZ = ORIGINAL_TZ;
+  }
+});
 
 describe('gameValidation', () => {
   test('parseLocalDateTime accepts ISO', () => {
