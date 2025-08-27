@@ -1,3 +1,9 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet } from 'react-native';
+import { Text, View } from '@/components/Themed';
+import { spacing, radius } from '@/constants/Spacing';
+
+const AnimatedView = Animated.createAnimatedComponent(View);
 import React, { useEffect, useState } from 'react';
 import Banner from './Banner';
 
@@ -73,8 +79,31 @@ export function useOnline() {
 
 export default function OfflineBanner() {
   const online = useOnline();
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!online) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      opacity.setValue(0);
+    }
+  }, [online, opacity]);
+
   if (online) return null;
   return (
+    <AnimatedView
+      style={[styles.bar, { opacity }]}
+      lightColor="#dc2626"
+      darkColor="#b91c1c"
+    >
+      <Text style={styles.text} lightColor="#fff" darkColor="#fee2e2">
+        You’re offline
+      </Text>
+    </AnimatedView>
     <View style={styles.bar}>
       <Text style={styles.text} allowFontScaling numberOfLines={1}>
         You’re offline
@@ -83,3 +112,16 @@ export default function OfflineBanner() {
   );
   return <Banner text="You’re offline" backgroundColor="#dc2626" />;
 }
+
+const styles = StyleSheet.create({
+  bar: {
+    position: 'absolute',
+    top: 50,
+    alignSelf: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    zIndex: 1000,
+  },
+  text: {},
+});

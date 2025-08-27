@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Button, FlatList, Pressable, RefreshControl, Share, StyleSheet, TextInput, View as RNView } from 'react-native';
+import {
+  ActivityIndicator,
+  Button,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  Share,
+  StyleSheet,
+  TextInput,
+  View as RNView,
+} from 'react-native';
 import { Link } from 'expo-router';
 import * as Linking from 'expo-linking';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -16,6 +26,7 @@ import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
 import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 import { useInfiniteGames } from '@/src/features/games/hooks/useInfiniteGames';
 import { useAuthStore } from '@/src/stores/auth';
+import { spacing, radius } from '@/constants/Spacing';
 import { isFull as isGameFull, slotsLeft } from '@/src/utils/capacity';
 
 type Props = {
@@ -489,8 +500,30 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
               ) : null
             }
             ListHeaderComponent={
-              <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+              <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.md }}>
                 {!online ? (
+                  <View
+                    style={styles.pillWarning}
+                    lightColor="#f3f4f6"
+                    darkColor="#374151"
+                  >
+                    <Text style={styles.pillWarningText} lightColor="#374151" darkColor="#f3f4f6">
+                      You’re offline. Join/Leave is disabled.
+                    </Text>
+                  </View>
+                ) : null}
+                {isError ? (
+                  <View style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>
+                    <View
+                      style={styles.pillError}
+                      lightColor="#fee2e2"
+                      darkColor="#7f1d1d"
+                    >
+                      <Text style={styles.pillErrorText} lightColor="#991b1b" darkColor="#fee2e2">
+                        {(error as any)?.message ?? 'Some games may be out of date.'}
+                      </Text>
+                    </View>
+=======
                   <RNView style={styles.pillWarning}>
                     <Text style={styles.pillWarningText} allowFontScaling numberOfLines={2}>
                       You’re offline. Join/Leave is disabled.
@@ -505,7 +538,7 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
                       </Text>
                     </RNView>
                     <Button title={isRefetching ? 'Retrying…' : 'Retry now'} onPress={() => refetch()} />
-                  </RNView>
+                  </View>
                 ) : null}
                 {!isLoading && !isRefetching ? (
                   <Text style={{ marginTop: 4, color: '#6b7280' }}>
@@ -562,18 +595,16 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
   pillWarning: {
     alignSelf: 'flex-start',
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
   },
-  pillWarningText: { color: '#374151' },
+  pillWarningText: {},
   pillError: {
     alignSelf: 'flex-start',
-    backgroundColor: '#fee2e2',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
   },
-  pillErrorText: { color: '#991b1b' },
+  pillErrorText: {},
 });
