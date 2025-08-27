@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
     ActionSheetIOS,
     ActivityIndicator,
@@ -19,9 +19,9 @@ import { Text, View } from '@/components/Themed';
 import { useToast } from '@/src/components/ToastProvider';
 import Avatar from '@/src/components/Avatar';
 import SkeletonDetail from '@/src/components/SkeletonDetail';
-import { usePrefs } from '@/src/stores/prefs';
 import { useGame } from '@/src/features/games/hooks/useGame';
 import { useParticipants } from '@/src/features/games/hooks/useParticipants';
+import { useAutoJoin } from '@/src/features/games/hooks/useAutoJoin';
 import { createInvite, deleteGame, joinGame, leaveGame } from '@/src/features/games/api';
 import { useAuthStore } from '@/src/stores/auth';
 import { confirm } from '@/src/components/ConfirmDialog';
@@ -143,29 +143,7 @@ export default function GameDetailsScreen() {
     },
     onError: (e: any) => toast.error(e?.message ?? 'Delete failed'),
   });
-
-  const inviteHandledRef = useRef(false);
-
-  useEffect(() => {
-    const shouldAuto = autojoin === '1' || autojoin === 'true';
-    if (shouldAuto && data && !data.joined && !join.isPending && !inviteHandledRef.current) {
-      inviteHandledRef.current = true;
-      (async () => {
-        const summary = [
-          data.title ? `Title: ${data.title}` : null,
-          whenText ? `When: ${whenText}` : null,
-          data.location ? `Location: ${data.location}` : null,
-        ].filter(Boolean).join('\n');
-        const ok = await confirm({
-          title: 'Join this game?',
-          message: summary || 'You followed an invite. Do you want to join this game?',
-          confirmText: 'Join',
-        });
-        if (ok) join.mutate();
-      })();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autojoin, data?.joined, join.isPending, whenText]);
+  useAutoJoin({ autojoin, data, whenText, join });
 
   if (isError && !data) {
     return (
