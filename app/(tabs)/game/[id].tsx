@@ -9,7 +9,9 @@ import {
     RefreshControl,
     Share,
     StyleSheet,
-    View as RNView
+    View as RNView,
+    Modal,
+    TextInput,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Linking from 'expo-linking';
@@ -26,6 +28,13 @@ import { createInvite, deleteGame, joinGame, leaveGame } from '@/src/features/ga
 import { useAuthStore } from '@/src/stores/auth';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { useOnline } from '@/src/components/OfflineBanner';
+
+let updateGameFn: any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  updateGameFn = require('@/src/features/games/api').updateGame;
+} catch {}
+const hasUpdateGame = typeof updateGameFn === 'function';
 
 export default function GameDetailsScreen() {
   const { id, autojoin } = useLocalSearchParams<{ id?: string; autojoin?: string }>();
@@ -142,6 +151,22 @@ export default function GameDetailsScreen() {
       router.back();
     },
     onError: (e: any) => toast.error(e?.message ?? 'Delete failed'),
+  });
+
+  const [maxPlayersOpen, setMaxPlayersOpen] = useState(false);
+  const [maxPlayersInput, setMaxPlayersInput] = useState('');
+
+  const updateMaxPlayers = useMutation({
+    mutationFn: (max: number | undefined) => updateGameFn!(id as string, { maxPlayers: max }),
+    onSuccess: async () => {
+      setMaxPlayersOpen(false);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['game', id] }),
+        qc.invalidateQueries({ queryKey: ['games'] }),
+      ]);
+      toast.success('Max players updated');
+    },
+    onError: (e: any) => toast.error(e?.message ?? 'Update failed'),
   });
 
   const inviteHandledRef = useRef(false);
@@ -344,6 +369,14 @@ export default function GameDetailsScreen() {
         <>
           <View style={{ height: 16 }} />
           <Button
+            title="Adjust max players"
+            onPress={() => {
+              setMaxPlayersInput(data.maxPlayers ? String(data.maxPlayers) : '');
+              setMaxPlayersOpen(true);
+            }}
+          />
+          <View style={{ height: 16 }} />
+          <Button
             color="#cc1f1a"
             title={del.isPending ? 'Deleting...' : 'Delete game'}
             onPress={async () => {
@@ -373,6 +406,42 @@ export default function GameDetailsScreen() {
       />
       <View style={{ height: 8 }} />
       <Button title="Back" onPress={() => router.back()} />
+      <Modal
+        animationType="slide"
+        transparent
+        visible={maxPlayersOpen}
+        onRequestClose={() => setMaxPlayersOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.sectionTitle}>Adjust max players</Text>
+            <RNView style={{ marginVertical: 12 }}>
+              <TextInput
+                style={styles.input}
+                keyboardType="number-pad"
+                value={maxPlayersInput}
+                onChangeText={setMaxPlayersInput}
+              />
+            </RNView>
+            {hasUpdateGame ? null : (
+              <Text style={{ marginBottom: 8, opacity: 0.8 }}>
+                Updating max players is not supported.
+              </Text>
+            )}
+            <RNView style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+              <Button title="Cancel" onPress={() => setMaxPlayersOpen(false)} />
+              <Button
+                title={updateMaxPlayers.isPending ? 'Saving...' : 'Save'}
+                onPress={() => {
+                  const max = maxPlayersInput ? Number(maxPlayersInput) : undefined;
+                  updateMaxPlayers.mutate(max);
+                }}
+                disabled={!hasUpdateGame || updateMaxPlayers.isPending}
+              />
+            </RNView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -451,4 +520,23 @@ const styles = StyleSheet.create({
   participantRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   participantName: { fontSize: 14 },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#eee', marginVertical: 8 },
+  input: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#ccc',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 6,
+    backgroundColor: '#fff',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
 });
