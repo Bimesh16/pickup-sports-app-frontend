@@ -1,12 +1,16 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { AppProviders } from '@/src/providers/AppProviders';
+import { useAuthStore } from '@/src/stores/auth';
+import OfflineBanner from '@/src/components/OfflineBanner';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -47,13 +51,53 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const segments = useSegments();
+  const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    const inAuthGroup = segments[0] === '(auth)';
+    if (!user?.authenticated && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (user?.authenticated && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [user, router, segments]);
+
+  // Deep link handling: /game/:id?join=1 or invite=true
+  useEffect(() => {
+    const handle = (url: string | null) => {
+      if (!url) return;
+      const parsed = Linking.parse(url);
+      const path = (parsed.path ?? '').replace(/^\//, '');
+      const params = parsed.queryParams ?? {};
+      const join = params.join === '1' || params.join === 'true' || params.invite === 'true';
+      const m = path.match(/^game\/([^/?#]+)/i);
+      if (m && m[1]) {
+        const id = decodeURIComponent(m[1]);
+        const to = join ? `/(tabs)/game/${id}?autojoin=1` : `/(tabs)/game/${id}`;
+        setTimeout(() => router.push(to as any), 0);
+      }
+    };
+
+    // initial URL
+    Linking.getInitialURL().then((u) => handle(u)).catch(() => {});
+    const sub = Linking.addEventListener('url', (e) => handle(e.url));
+    return () => sub.remove();
+  }, [router]);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <AppProviders>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <>
+          <Stack>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          </Stack>
+          <OfflineBanner />
+        </>
+      </ThemeProvider>
+    </AppProviders>
   );
 }
