@@ -1,15 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
-    ActionSheetIOS,
-    ActivityIndicator,
-    Button,
-    FlatList,
-    Platform,
-    Pressable,
-    RefreshControl,
-    Share,
-    StyleSheet,
-    View as RNView
+  ActionSheetIOS,
+  ActivityIndicator,
+  Button,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  Share,
+  StyleSheet,
+  View as RNView,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Linking from 'expo-linking';
@@ -19,13 +20,16 @@ import { Text, View } from '@/components/Themed';
 import { useToast } from '@/src/components/ToastProvider';
 import Avatar from '@/src/components/Avatar';
 import SkeletonDetail from '@/src/components/SkeletonDetail';
-import { usePrefs } from '@/src/stores/prefs';
 import { useGame } from '@/src/features/games/hooks/useGame';
 import { useParticipants } from '@/src/features/games/hooks/useParticipants';
+import { useAutoJoin } from '@/src/features/games/hooks/useAutoJoin';
 import { createInvite, deleteGame, joinGame, leaveGame } from '@/src/features/games/api';
 import { useAuthStore } from '@/src/stores/auth';
 import { confirm } from '@/src/components/ConfirmDialog';
 import { useOnline } from '@/src/components/OfflineBanner';
+import type { Participant } from '@/src/features/games/types';
+import { isFull as isGameFull, slotsLeft } from '@/src/utils/capacity';
+import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 
 export default function GameDetailsScreen() {
   const { id, autojoin } = useLocalSearchParams<{ id?: string; autojoin?: string }>();
@@ -71,6 +75,17 @@ export default function GameDetailsScreen() {
   };
 
   const toast = useToast();
+
+  useEffect(() => {
+    const unsub = onOnline(async () => {
+      await Promise.all([
+        refetch(),
+        qc.refetchQueries({ queryKey: ['game', id, 'participants'] }),
+      ]);
+      toast.success('Updated');
+    });
+    return unsub;
+  }, [refetch, qc, id, toast]);
 
   const openOwnerMenu = () => {
     if (!id) return;
@@ -143,29 +158,7 @@ export default function GameDetailsScreen() {
     },
     onError: (e: any) => toast.error(e?.message ?? 'Delete failed'),
   });
-
-  const inviteHandledRef = useRef(false);
-
-  useEffect(() => {
-    const shouldAuto = autojoin === '1' || autojoin === 'true';
-    if (shouldAuto && data && !data.joined && !join.isPending && !inviteHandledRef.current) {
-      inviteHandledRef.current = true;
-      (async () => {
-        const summary = [
-          data.title ? `Title: ${data.title}` : null,
-          whenText ? `When: ${whenText}` : null,
-          data.location ? `Location: ${data.location}` : null,
-        ].filter(Boolean).join('\n');
-        const ok = await confirm({
-          title: 'Join this game?',
-          message: summary || 'You followed an invite. Do you want to join this game?',
-          confirmText: 'Join',
-        });
-        if (ok) join.mutate();
-      })();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autojoin, data?.joined, join.isPending, whenText]);
+  useAutoJoin({ autojoin, data, whenText, join });
 
   if (isError && !data) {
     return (
@@ -198,11 +191,12 @@ export default function GameDetailsScreen() {
   const isOwner = !!(user && data.createdBy?.username && user.username === data.createdBy.username);
   const online = useOnline();
   const joined = !!data.joined;
-  const isFull = !joined && typeof data.maxPlayers === 'number' && typeof data.playersCount === 'number' && data.playersCount >= data.maxPlayers;
+  const isFull = isGameFull(joined, data.maxPlayers, data.playersCount);
   const playersInfo =
     typeof data.playersCount === 'number' && typeof data.maxPlayers === 'number'
       ? `${data.playersCount} / ${data.maxPlayers} players`
       : undefined;
+  const left = slotsLeft(data.maxPlayers, data.playersCount);
 
   return (
     <View style={styles.container}>
@@ -211,7 +205,12 @@ export default function GameDetailsScreen() {
           title: data.title || 'Game',
           headerRight: () => (
             <RNView style={{ flexDirection: 'row', gap: 16, paddingRight: 8 }}>
-              <Pressable onPress={onShare} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })} accessibilityLabel="Share">
+              <Pressable
+                onPress={onShare}
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                accessibilityLabel="Share"
+                accessibilityRole="button"
+              >
                 <FontAwesome name="share-alt" size={20} />
               </Pressable>
               <Pressable
@@ -222,6 +221,7 @@ export default function GameDetailsScreen() {
                 }}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                 accessibilityLabel="Copy link"
+                accessibilityRole="button"
               >
                 <FontAwesome name="link" size={20} />
               </Pressable>
@@ -229,6 +229,7 @@ export default function GameDetailsScreen() {
                 onPress={() => router.push(`/(tabs)/game/${id}/qr`)}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                 accessibilityLabel="Show QR code"
+                accessibilityRole="button"
               >
                 <FontAwesome name="qrcode" size={20} />
               </Pressable>
@@ -250,8 +251,24 @@ export default function GameDetailsScreen() {
                 }}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                 accessibilityLabel="Invite players"
+                accessibilityRole="button"
               >
                 <FontAwesome name="user-plus" size={20} />
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  try {
+                    const { url } = await createInvite(id as string);
+                    const copied = await copyToClipboard(url);
+                    if (copied) toast.info('Invite link copied');
+                  } catch (e: any) {
+                    toast.error(e?.message ?? 'Invite failed');
+                  }
+                }}
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                accessibilityLabel="Copy invite link"
+              >
+                <FontAwesome name="copy" size={20} />
               </Pressable>
               {isOwner ? (
                 <Pressable
@@ -270,7 +287,7 @@ export default function GameDetailsScreen() {
 
       {isError ? (
         <View style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 6, marginBottom: 8 }}>
-          <Text style={{ color: '#991b1b', marginBottom: 4 }}>There was a problem updating this game.</Text>
+          <Text style={{ color: '#7f1d1d', marginBottom: 4 }}>There was a problem updating this game.</Text>
           <Button title={isRefetching ? 'Retrying…' : 'Retry'} onPress={() => refetch()} />
         </View>
       ) : null}
@@ -280,18 +297,22 @@ export default function GameDetailsScreen() {
       {data.location ? <Text>{data.location}</Text> : null}
       {data.sport ? <Text>{data.sport}</Text> : null}
       {playersInfo ? <Text>{playersInfo}</Text> : null}
-      {typeof data.playersCount === 'number' && typeof data.maxPlayers === 'number' ? (
+      {left !== undefined ? (
         (() => {
-          const left = Math.max(data.maxPlayers - data.playersCount, 0);
           const low = left <= 2;
           const fullText = left === 0 ? 'Full' : left === 1 ? '1 slot left' : `${left} slots left`;
-          const color = left === 0 ? '#991b1b' : low ? '#92400e' : '#374151';
+          const color = left === 0 ? '#7f1d1d' : low ? '#7c2d12' : '#374151';
           return <Text style={{ color }}>{fullText}</Text>;
         })()
       ) : null}
       {isFull ? (
         <View style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 6, marginTop: 6 }}>
-          <Text style={{ color: '#991b1b' }}>This game is full. You can still open it to see details.</Text>
+          <Text style={{ color: '#7f1d1d' }}>This game is full. You can still open it to see details.</Text>
+        </View>
+      ) : null}
+      {isFull && isOwner ? (
+        <View style={{ backgroundColor: '#fef3c7', padding: 8, borderRadius: 6, marginTop: 6 }}>
+          <Text style={{ color: '#92400e' }}>Owner can increase max players</Text>
         </View>
       ) : null}
       {data.description ? (
@@ -388,6 +409,7 @@ function SkeletonParticipant() {
 
 function ParticipantsSection({ gameId }: { gameId: string }) {
   const { data, isLoading, isError, error, refetch, isRefetching } = useParticipants(gameId);
+  const [selected, setSelected] = useState<Participant | null>(null);
 
   return (
     <View>
@@ -395,7 +417,7 @@ function ParticipantsSection({ gameId }: { gameId: string }) {
 
       {isError ? (
         <View style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 6, marginBottom: 8 }}>
-          <Text style={{ color: '#991b1b', marginBottom: 4 }}>{(error as any)?.message ?? 'Failed to load participants.'}</Text>
+          <Text style={{ color: '#7f1d1d', marginBottom: 4 }}>{(error as any)?.message ?? 'Failed to load participants.'}</Text>
           <Button title={isRefetching ? 'Retrying…' : 'Retry'} onPress={() => refetch()} />
         </View>
       ) : null}
@@ -413,32 +435,45 @@ function ParticipantsSection({ gameId }: { gameId: string }) {
           data={data}
           keyExtractor={(p, i) => p.id ?? `${p.username}-${i}`}
           renderItem={({ item }) => (
-            <View style={styles.participantRow}>
-              <Avatar name={item.displayName || item.username} uri={item.avatarUrl ?? undefined} size={32} />
-              <Text style={styles.participantName}>{item.displayName || item.username}</Text>
-            </View>
+            <Pressable onPress={() => setSelected(item)}>
+              <View style={styles.participantRow}>
+                <Avatar name={item.displayName || item.username} uri={item.avatarUrl ?? undefined} size={32} />
+                <Text style={styles.participantName}>{item.displayName || item.username}</Text>
+              </View>
+            </Pressable>
           )}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         />
       )}
-    </View>
-  );
-}
-
-  return (
-    <View>
-      <Text style={styles.sectionTitle}>Participants</Text>
-      <FlatList
-        data={data}
-        keyExtractor={(p, i) => p.id ?? `${p.username}-${i}`}
-        renderItem={({ item }) => (
-          <View style={styles.participantRow}>
-            <Avatar name={item.displayName || item.username} uri={item.avatarUrl ?? undefined} size={32} />
-            <Text style={styles.participantName}>{item.displayName || item.username}</Text>
+      <Modal
+        visible={!!selected}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelected(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {selected ? (
+              <>
+                <Avatar
+                  name={selected.displayName || selected.username}
+                  uri={selected.avatarUrl ?? undefined}
+                  size={64}
+                />
+                <Text style={styles.modalName}>
+                  {selected.displayName || selected.username}
+                </Text>
+                <View style={{ height: 16 }} />
+                <Button title="Action 1" onPress={() => {}} />
+                <View style={{ height: 8 }} />
+                <Button title="Action 2" onPress={() => {}} />
+                <View style={{ height: 8 }} />
+                <Button title="Close" onPress={() => setSelected(null)} />
+              </>
+            ) : null}
           </View>
-        )}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-      />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -451,4 +486,17 @@ const styles = StyleSheet.create({
   participantRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   participantName: { fontSize: 14 },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: '#eee', marginVertical: 8 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    alignItems: 'center',
+  },
+  modalName: { fontSize: 16, fontWeight: '600', marginTop: 8 },
 });

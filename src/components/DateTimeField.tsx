@@ -1,5 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { Button, Modal, Platform, Pressable, StyleSheet, TextInput, View as RNView } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Button,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View as RNView,
+} from 'react-native';
 import { Text, View } from '@/components/Themed';
 
 type Props = {
@@ -17,6 +25,30 @@ type Props = {
 export default function DateTimeField({ value, onChange, placeholder = 'Pick date & time' }: Props) {
   const [iosOpen, setIosOpen] = useState(false);
 
+  const [picker, setPicker] = useState<{
+    DateTimePicker: any;
+    DateTimePickerAndroid?: any;
+  } | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let mounted = true;
+    import('@react-native-community/datetimepicker')
+      .then((mod) => {
+        if (!mounted) return;
+        setPicker({
+          DateTimePicker: mod?.default ?? mod,
+          DateTimePickerAndroid: mod?.DateTimePickerAndroid,
+        });
+      })
+      .catch(() => {
+        // module not available; fall back handled below
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const label = useMemo(() => {
     if (!value) return placeholder;
     const d = new Date(value);
@@ -24,20 +56,8 @@ export default function DateTimeField({ value, onChange, placeholder = 'Pick dat
     return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }, [value, placeholder]);
 
-  // Try to load community datetimepicker if present (without Metro static resolution)
-  let DateTimePicker: any = null;
-  let DateTimePickerAndroid: any = null;
-  try {
-    // eslint-disable-next-line no-eval
-    const dynRequire = eval('require') as any;
-    if (dynRequire) {
-      const mod = dynRequire('@react-native-community/datetimepicker');
-      DateTimePicker = mod?.default ?? mod;
-      DateTimePickerAndroid = mod?.DateTimePickerAndroid;
-    }
-  } catch {
-    // module not available, fall back to text input on all platforms
-  }
+  const DateTimePicker = picker?.DateTimePicker;
+  const DateTimePickerAndroid = picker?.DateTimePickerAndroid;
 
   const openAndroidPickers = async () => {
     if (!DateTimePickerAndroid) return; // fallback handled below
@@ -88,6 +108,7 @@ export default function DateTimeField({ value, onChange, placeholder = 'Pick dat
   if (Platform.OS === 'web' || !DateTimePicker) {
     return (
       <TextInput
+        accessibilityLabel="Date and time input"
         style={styles.input}
         placeholder="YYYY-MM-DDTHH:mm"
         autoCapitalize="none"
@@ -100,7 +121,12 @@ export default function DateTimeField({ value, onChange, placeholder = 'Pick dat
   // Native platforms with picker available
   return (
     <>
-      <Pressable onPress={onPress} style={({ pressed }) => [styles.field, { opacity: pressed ? 0.6 : 1 }]}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.field, { opacity: pressed ? 0.6 : 1 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Open date and time picker"
+      >
         <Text>{label}</Text>
       </Pressable>
 
