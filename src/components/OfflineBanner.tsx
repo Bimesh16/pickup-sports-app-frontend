@@ -52,7 +52,9 @@ export default function OfflineBanner() {
   if (online) return null;
   return (
     <View style={styles.bar}>
-      <Text style={styles.text}>You’re offline</Text>
+      <Text style={styles.text} allowFontScaling numberOfLines={1}>
+        You’re offline
+      </Text>
     </View>
   );
 }
