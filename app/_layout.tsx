@@ -11,6 +11,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { AppProviders } from '@/src/providers/AppProviders';
 import { useAuthStore } from '@/src/stores/auth';
 import OfflineBanner from '@/src/components/OfflineBanner';
+import CachedDataBanner from '@/src/components/CachedDataBanner';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -96,6 +97,7 @@ function RootLayoutNav() {
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
           </Stack>
           <OfflineBanner />
+          <CachedDataBanner />
         </>
       </ThemeProvider>
     </AppProviders>
