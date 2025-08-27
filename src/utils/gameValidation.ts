@@ -1,13 +1,42 @@
 export function parseLocalDateTime(input: string): Date | null {
   if (!input) return null;
-  // Accept ISO or "YYYY-MM-DDTHH:mm"
-  const iso = Date.parse(input);
-  if (!Number.isNaN(iso)) return new Date(iso);
-  const m = input.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})$/);
+  // Accept ISO (UTC) or "YYYY-MM-DDTHH:mm" (local)
+  let m = input.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?Z$/);
+  if (m) {
+    const [_, y, mo, d, h, mi, s] = m;
+    const year = Number(y);
+    const month = Number(mo);
+    const day = Number(d);
+    const hour = Number(h);
+    const minute = Number(mi);
+    const second = Number(s ?? '0');
+
+    if (month < 1 || month > 12) return null;
+    if (hour < 0 || hour > 23) return null;
+    if (minute < 0 || minute > 59) return null;
+    if (second < 0 || second > 59) return null;
+    const maxDay = new Date(year, month, 0).getDate();
+    if (day < 1 || day > maxDay) return null;
+
+    return new Date(Date.UTC(year, month - 1, day, hour, minute, second, 0));
+  }
+
+  m = input.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})$/);
   if (!m) return null;
   const [_, y, mo, d, h, mi] = m;
-  const dt = new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), 0, 0);
-  return Number.isNaN(dt.getTime()) ? null : dt;
+  const year = Number(y);
+  const month = Number(mo);
+  const day = Number(d);
+  const hour = Number(h);
+  const minute = Number(mi);
+
+  if (month < 1 || month > 12) return null;
+  if (hour < 0 || hour > 23) return null;
+  if (minute < 0 || minute > 59) return null;
+  const maxDay = new Date(year, month, 0).getDate();
+  if (day < 1 || day > maxDay) return null;
+
+  return new Date(year, month - 1, day, hour, minute, 0, 0);
 }
 
 export function validateCreateGame(fields: { title: string; startsAt: string; maxPlayers?: string }) {

@@ -106,6 +106,15 @@ describe('gameValidation', () => {
     expect(d).toBeNull();
   });
 
+  test('parseLocalDateTime rejects out-of-range values', () => {
+    expect(parseLocalDateTime('2020-13-10T10:00')).toBeNull(); // month
+    expect(parseLocalDateTime('2020-00-10T10:00')).toBeNull(); // month
+    expect(parseLocalDateTime('2021-02-29T10:00')).toBeNull(); // day
+    expect(parseLocalDateTime('2020-01-32T10:00')).toBeNull(); // day
+    expect(parseLocalDateTime('2020-01-10T24:00')).toBeNull(); // hour
+    expect(parseLocalDateTime('2020-01-10T10:60')).toBeNull(); // minute
+  });
+
   // These tests assume the process timezone is set to a zone with DST,
   // e.g. run with `TZ=America/New_York`.
   describe('parseLocalDateTime DST edge cases', () => {
