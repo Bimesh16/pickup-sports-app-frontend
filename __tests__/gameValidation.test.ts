@@ -1,10 +1,11 @@
+import type * as gv from '@/src/utils/gameValidation';
 import {describe} from "node:test";
 
 const ORIGINAL_TZ = process.env.TZ;
 const OriginalDate = Date;
 
-let parseLocalDateTime: typeof import('@/src/utils/gameValidation').parseLocalDateTime;
-let validateCreateGame: typeof import('@/src/utils/gameValidation').validateCreateGame;
+let parseLocalDateTime: typeof gv.parseLocalDateTime;
+let validateCreateGame: typeof gv.validateCreateGame;
 
 function mockTimezone(tz: string) {
   const RealDate = OriginalDate;
