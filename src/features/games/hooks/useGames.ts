@@ -3,9 +3,11 @@ import { fetchGames } from '../api';
 import { queryRetry } from '@/src/utils/queryRetry';
 
 export function useGames() {
-  return useQuery({
+  const { refetch, dataUpdatedAt, ...query } = useQuery({
     queryKey: ['games'],
     queryFn: fetchGames,
     retry: queryRetry,
   });
+
+  return { ...query, refetch, dataUpdatedAt };
 }
