@@ -6,6 +6,7 @@ import DateTimeField from '@/src/components/DateTimeField';
 import { useToast } from '@/src/components/ToastProvider';
 import { createGame } from '@/src/features/games/api';
 import type { CreateGameInput } from '@/src/features/games/types';
+import SportSelector from '@/src/features/games/components/SportSelector';
 import { parseLocalDateTime, validateCreateGame } from '@/src/utils/gameValidation';
 import { useCreateTemplate } from '@/src/stores/createTemplate';
 
@@ -14,6 +15,7 @@ export default function CreateGameScreen() {
 
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
+  const [sport, setSport] = useState('');
   const [startsAt, setStartsAt] = useState(''); // ISO string or "YYYY-MM-DDTHH:mm" local
   const [maxPlayers, setMaxPlayers] = useState<string>('');
   const [description, setDescription] = useState('');
@@ -24,6 +26,7 @@ export default function CreateGameScreen() {
     if (_rehydrated && template) {
       setTitle(template.title ?? '');
       setLocation(template.location ?? '');
+      setSport(template.sport ?? '');
       setStartsAt(template.startsAt ?? '');
       setMaxPlayers(template.maxPlayers ?? '');
       setDescription(template.description ?? '');
@@ -46,12 +49,13 @@ export default function CreateGameScreen() {
       await qc.invalidateQueries({ queryKey: ['games'] });
       toast.success('Game created');
       if (remember) {
-        setTemplate({ title, location, startsAt, maxPlayers, description, durationMinutes });
+        setTemplate({ title, sport, location, startsAt, maxPlayers, description, durationMinutes });
       } else {
         setTemplate(null);
       }
       setTitle('');
       setLocation('');
+      setSport('');
       setStartsAt('');
       setMaxPlayers('');
       setDescription('');
@@ -67,6 +71,7 @@ export default function CreateGameScreen() {
     const input: CreateGameInput = {
       title: title.trim(),
       location: location.trim() || undefined,
+      sport: sport || undefined,
       startsAt: dt ? dt.toISOString() : startsAt,
       maxPlayers: maxPlayers ? Number(maxPlayers) : undefined,
       description: description.trim() || undefined,
@@ -102,6 +107,9 @@ export default function CreateGameScreen() {
           value={location}
           onChangeText={setLocation}
         />
+      </RNView>
+      <RNView style={styles.formRow}>
+        <SportSelector value={sport} onChange={setSport} />
       </RNView>
       <RNView style={styles.formRow}>
         <DateTimeField value={startsAt} onChange={setStartsAt} />
@@ -149,6 +157,7 @@ export default function CreateGameScreen() {
             if (template) {
               setTitle(template.title ?? '');
               setLocation(template.location ?? '');
+              setSport(template.sport ?? '');
               setStartsAt(template.startsAt ?? '');
               setMaxPlayers(template.maxPlayers ?? '');
               setDescription(template.description ?? '');

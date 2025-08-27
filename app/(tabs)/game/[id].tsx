@@ -25,7 +25,7 @@ import { useParticipants } from '@/src/features/games/hooks/useParticipants';
 import { createInvite, deleteGame, joinGame, leaveGame } from '@/src/features/games/api';
 import { useAuthStore } from '@/src/stores/auth';
 import { confirm } from '@/src/components/ConfirmDialog';
-import { useOnline } from '@/src/components/OfflineBanner';
+import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 
 export default function GameDetailsScreen() {
   const { id, autojoin } = useLocalSearchParams<{ id?: string; autojoin?: string }>();
@@ -71,6 +71,17 @@ export default function GameDetailsScreen() {
   };
 
   const toast = useToast();
+
+  useEffect(() => {
+    const unsub = onOnline(async () => {
+      await Promise.all([
+        refetch(),
+        qc.refetchQueries({ queryKey: ['game', id, 'participants'] }),
+      ]);
+      toast.success('Updated');
+    });
+    return unsub;
+  }, [refetch, qc, id, toast]);
 
   const openOwnerMenu = () => {
     if (!id) return;
@@ -211,7 +222,12 @@ export default function GameDetailsScreen() {
           title: data.title || 'Game',
           headerRight: () => (
             <RNView style={{ flexDirection: 'row', gap: 16, paddingRight: 8 }}>
-              <Pressable onPress={onShare} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })} accessibilityLabel="Share">
+              <Pressable
+                onPress={onShare}
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                accessibilityLabel="Share"
+                accessibilityRole="button"
+              >
                 <FontAwesome name="share-alt" size={20} />
               </Pressable>
               <Pressable
@@ -222,6 +238,7 @@ export default function GameDetailsScreen() {
                 }}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                 accessibilityLabel="Copy link"
+                accessibilityRole="button"
               >
                 <FontAwesome name="link" size={20} />
               </Pressable>
@@ -229,6 +246,7 @@ export default function GameDetailsScreen() {
                 onPress={() => router.push(`/(tabs)/game/${id}/qr`)}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                 accessibilityLabel="Show QR code"
+                accessibilityRole="button"
               >
                 <FontAwesome name="qrcode" size={20} />
               </Pressable>
@@ -250,8 +268,24 @@ export default function GameDetailsScreen() {
                 }}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
                 accessibilityLabel="Invite players"
+                accessibilityRole="button"
               >
                 <FontAwesome name="user-plus" size={20} />
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  try {
+                    const { url } = await createInvite(id as string);
+                    const copied = await copyToClipboard(url);
+                    if (copied) toast.info('Invite link copied');
+                  } catch (e: any) {
+                    toast.error(e?.message ?? 'Invite failed');
+                  }
+                }}
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                accessibilityLabel="Copy invite link"
+              >
+                <FontAwesome name="copy" size={20} />
               </Pressable>
               {isOwner ? (
                 <Pressable

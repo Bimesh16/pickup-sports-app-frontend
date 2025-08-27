@@ -15,7 +15,7 @@ import { joinGame, leaveGame } from '@/src/features/games/api';
 import type { Game } from '@/src/features/games/types';
 import { usePrefs } from '@/src/stores/prefs';
 import { useDebouncedValue } from '@/src/hooks/useDebouncedValue';
-import { useOnline } from '@/src/components/OfflineBanner';
+import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 import { useInfiniteGames } from '@/src/features/games/hooks/useInfiniteGames';
 import { useAuthStore } from '@/src/stores/auth';
 
@@ -172,6 +172,7 @@ function GameCard({
         <Link href={`/(tabs)/game/${game.id}`} asChild>
           <Pressable
             accessibilityLabel={`Open ${game.title}`}
+            accessibilityRole="link"
             style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1.0, flex: 1 }]}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -191,6 +192,7 @@ function GameCard({
         </Link>
         <Pressable
           accessibilityLabel="Share game"
+          accessibilityRole="button"
           hitSlop={10}
           onPress={share}
           onLongPress={copyLink}
@@ -258,6 +260,15 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
   });
   const { join, leave, joinPendingId, leavePendingId } = useJoinLeaveOptimistic();
   const online = useOnline();
+  const toast = useToast();
+
+  useEffect(() => {
+    const unsub = onOnline(async () => {
+      await refetch();
+      toast.success('Updated');
+    });
+    return unsub;
+  }, [refetch, toast]);
 
   // Keep prefs in sync (after hydration)
   useEffect(() => {
@@ -377,6 +388,7 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
             }}
             style={({ pressed }) => [{ alignSelf: 'flex-start', backgroundColor: '#e5e7eb', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, opacity: pressed ? 0.7 : 1 }]}
             accessibilityLabel="Clear filters"
+            accessibilityRole="button"
           >
             <Text allowFontScaling numberOfLines={1}>Clear filters ✕</Text>
           </Pressable>
