@@ -19,6 +19,19 @@ export async function changeEmail(newEmail: string): Promise<void> {
   await api.post('/auth/change-email', { newEmail }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
+export async function getEmailVerificationStatus(): Promise<boolean> {
+  const { data } = await api.get('/auth/verification-status', {
+    headers: { 'Cache-Control': 'no-store' },
+  });
+  return !!data?.verified;
+}
+
+export async function resendVerificationEmail(): Promise<void> {
+  await api.post('/auth/resend-verification', undefined, {
+    headers: { 'Cache-Control': 'no-store' },
+  });
+}
+
 /**
  * Upload avatar image file and return absolute URL.
  * Backend endpoint assumed: POST /users/me/avatar -> { url: string }
