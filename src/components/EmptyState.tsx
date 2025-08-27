@@ -12,8 +12,14 @@ type Props = {
 export default function EmptyState({ title, subtitle, actionLabel, onAction }: Props) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      <Text style={styles.title} allowFontScaling numberOfLines={2} adjustsFontSizeToFit>
+        {title}
+      </Text>
+      {subtitle ? (
+        <Text style={styles.subtitle} allowFontScaling numberOfLines={2} adjustsFontSizeToFit>
+          {subtitle}
+        </Text>
+      ) : null}
       {actionLabel && onAction ? <Button title={actionLabel} onPress={onAction} /> : null}
     </View>
   );

@@ -30,7 +30,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="list" color={color} />,
           headerRight: () => (
             <Link href="/modal" asChild>
-              <Pressable>
+              <Pressable accessibilityLabel="About" accessibilityRole="link">
                 {({ pressed }) => (
                   <FontAwesome
                     name="info-circle"
@@ -76,6 +76,13 @@ export default function TabLayout() {
         options={{
           title: 'My Games',
           tabBarIcon: ({ color }) => <TabBarIcon name="star" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="about"
+        options={{
+          title: 'About',
+          tabBarIcon: ({ color }) => <TabBarIcon name="info-circle" color={color} />,
         }}
       />
     </Tabs>
