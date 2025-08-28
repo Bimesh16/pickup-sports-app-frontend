@@ -5,7 +5,6 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -56,55 +55,32 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const user = useAuthStore((s) => s.user);
-  const [isReady, setIsReady] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
-
-  // Wait for segments to be ready before attempting navigation
-  useEffect(() => {
-    // Ensure we have segments and they're not empty
-    if (segments.length > 0 && segments[0]) {
-      // Add a small delay to ensure the layout is fully mounted
-      const timer = setTimeout(() => {
-        setIsReady(true);
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [segments]);
-
-  // Wait for auth state to be determined
-  useEffect(() => {
-    // Set auth as ready after a brief delay to ensure auth store is initialized
-    const timer = setTimeout(() => {
-      setAuthReady(true);
-    }, 200);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
-      // Only navigate after the layout is ready, segments are loaded, and auth is ready
-  if (!isReady || !authReady) return;
-    
     const inAuthGroup = segments[0] === '(auth)';
-    if (!user?.authenticated && !inAuthGroup) {
-      // Use setTimeout to ensure navigation happens after render
-      setTimeout(() => {
-        router.replace('/(auth)/login');
-      }, 0);
-    } else if (user?.authenticated && inAuthGroup) {
-      // Use setTimeout to ensure navigation happens after render
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 0);
+    
+    // Wait for auth bootstrap to complete before doing routing
+    // We know bootstrap is done when either user is set (authenticated) or explicitly null (not authenticated)
+    const isBootstrapComplete = user !== undefined;
+    
+    if (!isBootstrapComplete && isInitialLoad) {
+      return; // Wait for bootstrap to complete
     }
-  }, [user, router, segments, isReady]);
+
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+
+    if (!user?.authenticated && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (user?.authenticated && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [user, router, segments, isInitialLoad]);
 
   // Deep link handling: /game/:id?join=1 or invite=true
   useEffect(() => {
-    // Only handle deep links after the layout is ready and auth is ready
-    if (!isReady || !authReady) return;
-    
     const handle = (url: string | null) => {
       if (!url) return;
       const parsed = Linking.parse(url);
@@ -124,19 +100,6 @@ function RootLayoutNav() {
     const sub = Linking.addEventListener('url', (e) => handle(e.url));
     return () => sub.remove();
   }, [router]);
-
-  // Don't render anything until ready to prevent navigation errors
-  if (!isReady || !authReady) {
-    return (
-      <AppProviders>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" />
-          </View>
-        </ThemeProvider>
-      </AppProviders>
-    );
-  }
 
   return (
     <AppProviders>
