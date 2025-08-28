@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AuthSession } from '@/src/features/auth/api';
+import type { User } from '@/src/types/api';
 
 export type AuthUser = {
   username: string;
@@ -7,6 +8,14 @@ export type AuthUser = {
   authenticated: boolean;
   displayName?: string;
   avatarUrl?: string | null;
+  // Add new fields from backend User model
+  id?: number;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  skillLevel?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 type AuthState = {

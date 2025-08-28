@@ -48,7 +48,7 @@ async function refreshTokens() {
     const body: any = {};
     const rt = await getRefreshToken();
     if (rt) body.refreshToken = rt;
-    const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, body, {
+    const { data } = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, body, {
       withCredentials: true,
       headers: { 'Cache-Control': 'no-store' },
     });
