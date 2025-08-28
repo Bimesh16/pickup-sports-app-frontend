@@ -1,10 +1,40 @@
 import { api } from '@/src/api/client';
 import type { CreateGameInput, Game, Participant } from './types';
 import type { ChatMessage } from './types/chat';
+import type { 
+  Game as BackendGame, 
+  CreateGameRequest, 
+  GamesQuery, 
+  PaginatedResponse 
+} from '@/src/types/api';
 
 export async function fetchGames(): Promise<Game[]> {
-  const { data } = await api.get('/games', { headers: { 'Cache-Control': 'no-store' } });
+  const { data } = await api.get('/api/v1/games', { headers: { 'Cache-Control': 'no-store' } });
   return data as Game[];
+}
+
+// New API matching backend spec
+export async function fetchGamesWithPagination(query: GamesQuery = {}): Promise<PaginatedResponse<BackendGame>> {
+  const { data } = await api.get('/api/v1/games', {
+    params: {
+      sport: query.sport,
+      skillLevel: query.skillLevel,
+      venueId: query.venueId,
+      startDate: query.startDate,
+      endDate: query.endDate,
+      page: query.page || 0,
+      size: query.size || 10
+    },
+    headers: { 'Cache-Control': 'no-store' }
+  });
+  return data;
+}
+
+export async function fetchMyGames(): Promise<PaginatedResponse<BackendGame>> {
+  const { data } = await api.get('/api/v1/games/my-games', {
+    headers: { 'Cache-Control': 'no-store' }
+  });
+  return data;
 }
 
 export async function createInvite(gameId: string): Promise<{ url: string }> {
@@ -112,16 +142,16 @@ export async function adminPromoteWaitlist(id: string, username: string): Promis
 }
 
 export async function fetchGame(id: string): Promise<Game> {
-  const { data } = await api.get(`/games/${id}`, { headers: { 'Cache-Control': 'no-store' } });
+  const { data } = await api.get(`/api/v1/games/${id}`, { headers: { 'Cache-Control': 'no-store' } });
   return data as Game;
 }
 
 export async function joinGame(id: string): Promise<void> {
-  await api.post(`/games/${id}/join`, null, { headers: { 'Cache-Control': 'no-store' } });
+  await api.post(`/api/v1/games/${id}/join`, null, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function leaveGame(id: string): Promise<void> {
-  await api.delete(`/games/${id}/leave`, { headers: { 'Cache-Control': 'no-store' } });
+  await api.post(`/api/v1/games/${id}/leave`, null, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function rsvpGame(id: string): Promise<void> {
@@ -166,15 +196,21 @@ export async function removeCohost(gameId: string, userId: string): Promise<void
 }
 
 export async function createGame(input: CreateGameInput): Promise<Game> {
-  const { data } = await api.post('/games', input, { headers: { 'Cache-Control': 'no-store' } });
+  const { data } = await api.post('/api/v1/games', input, { headers: { 'Cache-Control': 'no-store' } });
   return data as Game;
 }
 
+// New backend-spec create game
+export async function createGameBackend(input: CreateGameRequest): Promise<BackendGame> {
+  const { data } = await api.post('/api/v1/games', input, { headers: { 'Cache-Control': 'no-store' } });
+  return data;
+}
+
 export async function updateGame(id: string, input: Partial<CreateGameInput>): Promise<Game> {
-  const { data } = await api.put(`/games/${id}`, input, { headers: { 'Cache-Control': 'no-store' } });
+  const { data } = await api.put(`/api/v1/games/${id}`, input, { headers: { 'Cache-Control': 'no-store' } });
   return data as Game;
 }
 
 export async function deleteGame(id: string): Promise<void> {
-  await api.delete(`/games/${id}`, { headers: { 'Cache-Control': 'no-store' } });
+  await api.delete(`/api/v1/games/${id}`, { headers: { 'Cache-Control': 'no-store' } });
 }
