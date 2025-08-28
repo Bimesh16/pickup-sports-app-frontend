@@ -4,6 +4,7 @@ import { Text, View } from '@/components/Themed';
 import { useComprehensiveRecommendations } from '../hooks/useRecommendations';
 import { useRecommendationFeedback } from '../hooks/useRecommendations';
 import { GameRecommendation, PlayerRecommendation, VenueRecommendation } from '@/src/types/api';
+import { useAuthStore } from '@/src/stores/auth';
 
 interface RecommendationItemProps {
   title: string;
@@ -47,8 +48,19 @@ function RecommendationItem({ title, subtitle, score, reasons, onLike, onDislike
 }
 
 export default function RecommendationsCard() {
+  const user = useAuthStore((s) => s.user);
   const { data, isLoading, isError } = useComprehensiveRecommendations();
   const feedbackMutation = useRecommendationFeedback();
+
+  // Show sign-in message when not authenticated
+  if (!user?.authenticated) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>AI Recommendations</Text>
+        <Text style={styles.signInText}>Sign in to get personalized recommendations</Text>
+      </View>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -256,6 +268,12 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 14,
     color: '#dc3545',
+    textAlign: 'center',
+    padding: 20,
+  },
+  signInText: {
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
     padding: 20,
   },
