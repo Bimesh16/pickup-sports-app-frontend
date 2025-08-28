@@ -54,7 +54,7 @@ export function setupAuthInterceptors(instance: AxiosInstance = api) {
 
         try {
           const { data } = await instance.post(
-            '/auth/refresh',
+            '/api/v1/auth/refresh',
             null,
             { headers: { 'Cache-Control': 'no-store' } }
           );

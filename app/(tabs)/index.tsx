@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { View, Text } from '@/components/Themed';
 import GamesList from '@/src/features/games/components/GamesList';
 import RecommendationsCard from '@/src/features/ai/components/RecommendationsCard';
@@ -9,7 +9,7 @@ export default function GamesScreen() {
   const user = useAuthStore((s) => s.user);
   
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       <View style={styles.content}>
         {user && (
           <Text style={styles.welcomeText}>
@@ -24,7 +24,7 @@ export default function GamesScreen() {
           <GamesList initialShowJoined={false} allowToggle />
         </View>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -35,6 +35,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    gap: 16,
   },
   welcomeText: {
     fontSize: 18,

@@ -9,7 +9,7 @@ export function useLogout() {
   return useMutation<void, Error, void>({
     mutationFn: async () => {
       try {
-        await api.post('/auth/logout', null, { headers: { 'Cache-Control': 'no-store' } });
+        await api.post('/api/v1/auth/logout', null, { headers: { 'Cache-Control': 'no-store' } });
       } catch {
         // Ignore network/backend errors; we still clear local state
       } finally {

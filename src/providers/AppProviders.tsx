@@ -63,10 +63,18 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       client={queryClient}
       persistOptions={{
         persister,
+        // Bump this when query shapes change to invalidate old persisted cache
+        buster: 'v2',
+        // Do not restore very old caches
+        maxAge: 10 * 60 * 1000, // 10 minutes
         dehydrateOptions: {
           shouldDehydrateQuery: (query) => {
             const key = query.queryKey[0];
-            return key === 'games' || key === 'game';
+            // Persist only successful queries for the games list/details
+            return (
+              query.state.status === 'success' &&
+              (key === 'games' || key === 'game')
+            );
           },
         },
       }}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, ActivityIndicator } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { useTrends, useDemandForecast, useGameOptimization } from '../hooks/useAnalytics';
 
@@ -33,6 +33,7 @@ function MetricCard({ title, value, subtitle, trend }: MetricCardProps) {
 }
 
 export default function AnalyticsDashboard() {
+  // Analytics dashboard component for displaying trends and insights
   const { data: trends, isLoading: trendsLoading } = useTrends();
   const { data: forecast, isLoading: forecastLoading } = useDemandForecast();
   const { data: optimization, isLoading: optimizationLoading } = useGameOptimization();
@@ -49,7 +50,7 @@ export default function AnalyticsDashboard() {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       <Text style={styles.title}>📊 Analytics Dashboard</Text>
 
       {/* Sport Popularity Trends */}
@@ -168,15 +169,15 @@ export default function AnalyticsDashboard() {
           </View>
         </View>
       )}
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#f8f9fa',
     padding: 16,
+    gap: 16,
   },
   centered: {
     flex: 1,

@@ -15,7 +15,7 @@ export function useResendVerification() {
       try {
         const headers = buildRequestHeaders(body.captchaToken);
         // Support either email or username
-        await api.post('/auth/verify/resend', body, { headers });
+        await api.post('/api/v1/auth/verify/resend', body, { headers });
       } catch (e: any) {
         const msg = e?.response?.data?.message ?? e?.message ?? 'Could not resend verification email';
         throw new Error(msg);

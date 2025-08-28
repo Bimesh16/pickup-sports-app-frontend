@@ -19,7 +19,7 @@ export function useRegister() {
         const headers: Record<string, string> = { 'Cache-Control': 'no-store' };
         if (body.captchaToken) headers['X-Captcha-Token'] = body.captchaToken;
 
-        const { data } = await api.post('/auth/register', body, { headers });
+        const { data } = await api.post('/api/v1/auth/register', body, { headers });
 
         if (data?.mfaRequired) {
           return { mfaRequired: true, challenge: data.challenge as string };

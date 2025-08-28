@@ -1,9 +1,10 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { useComprehensiveRecommendations } from '../hooks/useRecommendations';
 import { useRecommendationFeedback } from '../hooks/useRecommendations';
 import { GameRecommendation, PlayerRecommendation, VenueRecommendation } from '@/src/types/api';
+import { useAuthStore } from '@/src/stores/auth';
 
 interface RecommendationItemProps {
   title: string;
@@ -47,7 +48,8 @@ function RecommendationItem({ title, subtitle, score, reasons, onLike, onDislike
 }
 
 export default function RecommendationsCard() {
-  const { data, isLoading, isError } = useComprehensiveRecommendations();
+  const user = useAuthStore((s) => s.user);
+  const { data, isLoading, isError } = useComprehensiveRecommendations(user?.authenticated ? user.id : undefined);
   const feedbackMutation = useRecommendationFeedback();
 
   if (isLoading) {
@@ -55,6 +57,15 @@ export default function RecommendationsCard() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>AI Recommendations</Text>
         <Text style={styles.loadingText}>Loading personalized recommendations...</Text>
+      </View>
+    );
+  }
+
+  if (!user?.authenticated) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>AI Recommendations</Text>
+        <Text style={styles.errorText}>Sign in to get personalized recommendations</Text>
       </View>
     );
   }
@@ -84,7 +95,7 @@ export default function RecommendationsCard() {
     <View style={styles.card}>
       <Text style={styles.cardTitle}>AI Recommendations</Text>
       
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <View style={styles.recommendationsContainer}>
         {/* Game Recommendations */}
         {data.gameRecommendations.length > 0 && (
           <View style={styles.section}>
@@ -138,7 +149,7 @@ export default function RecommendationsCard() {
             ))}
           </View>
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -161,8 +172,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: '#333',
   },
-  scrollView: {
-    maxHeight: 400,
+  recommendationsContainer: {
+    gap: 16,
   },
   section: {
     marginBottom: 20,

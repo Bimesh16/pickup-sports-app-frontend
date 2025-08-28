@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, setTokens } from '@/src/api/client';
+import { api, setTokens, getRefreshToken } from '@/src/api/client';
 import { useAuthStore } from '@/src/stores/auth';
 
 /**
@@ -17,9 +17,27 @@ export function useAuthBootstrap() {
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await api.get('/auth/me', { headers: { 'Cache-Control': 'no-store' } });
+        // Check if we have a refresh token before attempting to restore session
+        const refreshToken = await getRefreshToken();
+        
+        if (!refreshToken) {
+          // No existing session, just set bootstrapping to false
+          if (!cancelled) {
+            setUser(null);
+            setBootstrapping(false);
+          }
+          return;
+        }
+
+        // Try to restore the session
+        const { data } = await api.get('/api/v1/auth/me', { headers: { 'Cache-Control': 'no-store' } });
         if (!cancelled) {
-          setUser(data);
+          // Ensure the user object has the required structure
+          const userData = {
+            ...data,
+            authenticated: true, // Always set this to true for restored sessions
+          };
+          setUser(userData);
           setError(null);
         }
       } catch (e: any) {

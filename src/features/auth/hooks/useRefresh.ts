@@ -9,11 +9,16 @@ export function useRefresh() {
   return useMutation({
     mutationFn: async () => {
       await refresh();
-      const { data } = await api.get('/auth/me', { headers: { 'Cache-Control': 'no-store' } });
+              const { data } = await api.get('/api/v1/auth/me', { headers: { 'Cache-Control': 'no-store' } });
       return data;
     },
     onSuccess: (user) => {
-      setUser(user);
+      // Ensure the user object has the required structure
+      const userData = {
+        ...user,
+        authenticated: true, // Always set this to true after successful refresh
+      };
+      setUser(userData);
     },
   });
 }

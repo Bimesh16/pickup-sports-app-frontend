@@ -21,14 +21,19 @@ export function useMfaVerify() {
         const headers: Record<string, string> = { 'Cache-Control': 'no-store' };
         if (body.captchaToken) headers['X-Captcha-Token'] = body.captchaToken;
 
-        const { data } = await api.post('/auth/mfa/verify', body, { headers });
+        const { data } = await api.post('/api/v1/auth/mfa/verify', body, { headers });
 
         if (data?.accessToken && data?.refreshToken) {
           await setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
         }
 
-        const me = await api.get('/auth/me', { headers: { 'Cache-Control': 'no-store' } });
-        return { user: me.data };
+        const me = await api.get('/api/v1/auth/me', { headers: { 'Cache-Control': 'no-store' } });
+        // Ensure the user object has the required structure
+        const userData = {
+          ...me.data,
+          authenticated: true, // Always set this to true after successful MFA verification
+        };
+        return { user: userData };
       } catch (e: any) {
         const msg =
           e?.response?.data?.message ??

@@ -26,7 +26,7 @@ export function useResendMfa() {
         }
 
         const headers = buildRequestHeaders(body.captchaToken);
-        await api.post('/auth/mfa/resend', { username, email }, { headers, signal: body.signal });
+        await api.post('/api/v1/auth/mfa/resend', { username, email }, { headers, signal: body.signal });
       } catch (e: any) {
         const status = e?.response?.status;
         // If there is no response at all, treat as offline/network issue

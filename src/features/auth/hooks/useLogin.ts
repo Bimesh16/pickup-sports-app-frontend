@@ -28,7 +28,7 @@ export function useLogin() {
         const headers: Record<string, string> = { 'Cache-Control': 'no-store' };
         if (body.captchaToken) headers['X-Captcha-Token'] = body.captchaToken;
 
-        const { data } = await api.post('/auth/login', body, {
+        const { data } = await api.post('/api/v1/auth/login', body, {
           headers,
           signal: body.signal,
         });
@@ -43,8 +43,13 @@ export function useLogin() {
           await setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
         }
 
-        const me = await api.get('/auth/me', { headers: { 'Cache-Control': 'no-store' } });
-        return { user: me.data };
+        const me = await api.get('/api/v1/auth/me', { headers: { 'Cache-Control': 'no-store' } });
+        // Ensure the user object has the required structure
+        const userData = {
+          ...me.data,
+          authenticated: true, // Always set this to true after successful login
+        };
+        return { user: userData };
       } catch (e: any) {
         // Provide clearer auth error messages
         const status = e?.response?.status;

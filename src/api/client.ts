@@ -27,7 +27,7 @@ export async function setTokens(tokens: TokenPair | null) {
   }
 }
 
-async function getRefreshToken(): Promise<string | null> {
+export async function getRefreshToken(): Promise<string | null> {
   if (IS_WEB) return null; // expect HttpOnly cookie on web
   return (await SecureStore.getItemAsync('refreshToken')) ?? null;
 }

@@ -17,7 +17,7 @@ export function useForgotPassword() {
         const usernameOrEmail = body.usernameOrEmail?.trim();
         if (!usernameOrEmail) throw new Error('Enter a username or email.');
         const headers = buildRequestHeaders(body.captchaToken);
-        await api.post('/auth/forgot', { usernameOrEmail }, { headers, signal: body.signal });
+        await api.post('/api/v1/auth/forgot', { usernameOrEmail }, { headers, signal: body.signal });
       } catch (e: any) {
         const status = e?.response?.status;
         if (!e?.response) {
