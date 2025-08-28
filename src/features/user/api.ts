@@ -4,7 +4,7 @@ import type { UserStats, GameParticipation, UserAchievement, SocialConnection, U
 
 // User Management APIs matching backend spec
 export async function fetchProfile(): Promise<User> {
-  const { data } = await api.get('/api/v1/users/profile', {
+  const { data } = await api.get('/auth/me', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
