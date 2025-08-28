@@ -3,7 +3,18 @@ import { fetchGamesPage } from '../../games/api';
 
 const PAGE_SIZE = 20;
 
-export type GamesFilters = { q?: string; joined?: boolean };
+export type GamesFilters = {
+  q?: string;
+  joined?: boolean;
+  sport?: string;
+  location?: string;
+  skillLevel?: string;
+  fromTime?: string;
+  toTime?: string;
+  lat?: number;
+  lon?: number;
+  radiusKm?: number;
+};
 
 export function useInfiniteGames(filters: GamesFilters = {}) {
   return useInfiniteQuery({

@@ -1,12 +1,15 @@
 import React, { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, setTokens } from '@/src/api/client';
-import { useAuthStore } from '@/src/stores/auth';
 import { ToastProvider } from '@/src/components/ToastProvider';
+import { View } from '@/components/Themed';
+import { setupAuthInterceptors } from '@/src/features/auth/interceptors';
+import { useAuthBootstrap } from '@/src/features/auth/hooks/useAuthBootstrap';
+import { useKeepAlive } from '@/src/features/auth/hooks/useKeepAlive';
 
 // Initialize Sentry if available. We dynamically require the SDK so that the
 // application still works in environments where the dependency is not
@@ -22,9 +25,11 @@ try {
 } catch {
   // ignore – Sentry is optional for local development/tests
 }
-const persister = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
-  ? createSyncStoragePersister({ storage: window.localStorage })
-  : createAsyncStoragePersister({ storage: AsyncStorage });
+
+const persister =
+  typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+    ? createSyncStoragePersister({ storage: window.localStorage })
+    : createAsyncStoragePersister({ storage: AsyncStorage });
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,25 +48,15 @@ export const queryClient = new QueryClient({
 });
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
-  const setUser = useAuthStore((s) => s.setUser);
-
+  // Install auth interceptors once
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await api.get('/auth/me', { headers: { 'Cache-Control': 'no-store' } });
-        if (!cancelled) setUser(data);
-      } catch {
-        if (!cancelled) {
-          await setTokens(null);
-          setUser(null);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [setUser]);
+    setupAuthInterceptors();
+  }, []);
+
+  // Bootstrap the session before rendering the rest of the app
+  const { isBootstrapping } = useAuthBootstrap();
+  // Keep server session warm while authenticated
+  useKeepAlive();
 
   return (
     <PersistQueryClientProvider
@@ -77,8 +72,18 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       }}
     >
       <ToastProvider>
-        {children}
+        {isBootstrapping ? (
+          <View style={styles.center}>
+            <ActivityIndicator />
+          </View>
+        ) : (
+          children
+        )}
       </ToastProvider>
     </PersistQueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+});

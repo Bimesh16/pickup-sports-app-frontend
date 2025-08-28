@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, StyleSheet, View as RNView } from 'react-native';
 import { usePrefs } from '@/src/stores/prefs';
+import { useLogout } from '@/src/features/auth/hooks/useLogout';
 import { useRouter } from 'expo-router';
 import { Text, View } from '@/components/Themed';
 import Avatar from '@/src/components/Avatar';
@@ -46,6 +47,7 @@ export default function ProfileScreen() {
           <RNView style={{ height: 8 }} />
           <PrefsSection />
           <View style={{ height: 8 }} />
+          <SignOutRow />
         </>
       ) : (
         <>
@@ -66,6 +68,20 @@ function PrefsSection() {
     <RNView style={{ gap: 6 }}>
       <Text>Calendar default duration: {defaultCalDuration} minutes</Text>
       <Button title={`Change to ${next} minutes`} onPress={() => setDefaultCalDuration(next)} />
+    </RNView>
+  );
+}
+
+function SignOutRow() {
+  const logout = useLogout();
+  return (
+    <RNView style={{ marginTop: 12 }}>
+      <Button
+        title={logout.isPending ? 'Signing out…' : 'Sign out'}
+        color="#b91c1c"
+        onPress={() => logout.mutate()}
+        disabled={logout.isPending}
+      />
     </RNView>
   );
 }

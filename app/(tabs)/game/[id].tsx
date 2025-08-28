@@ -24,6 +24,8 @@ import SkeletonDetail from '@/src/components/SkeletonDetail';
 import { useGame } from '@/src/features/games/hooks/useGame';
 import { useParticipants } from '@/src/features/games/hooks/useParticipants';
 import { useAutoJoin } from '@/src/features/games/hooks/useAutoJoin';
+import { useGamePresence } from '@/src/features/games/hooks/useGamePresence';
+import { useWsConnected } from '@/src/hooks/useWsConnected';
 import { createInvite, deleteGame, joinGame, leaveGame } from '@/src/features/games/api';
 import { useAuthStore } from '@/src/stores/auth';
 import { confirm } from '@/src/components/ConfirmDialog';
@@ -42,6 +44,9 @@ export default function GameDetailsScreen() {
   const { id, autojoin } = useLocalSearchParams<{ id?: string; autojoin?: string }>();
   const { data, isLoading, refetch, isRefetching, isError, error } = useGame(id);
   const qc = useQueryClient();
+
+    // Live presence and capacity updates via WebSocket
+    useGamePresence(id as string | undefined);
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
@@ -97,6 +102,7 @@ export default function GameDetailsScreen() {
   const openOwnerMenu = () => {
     if (!id) return;
     const goEdit = () => router.push(`/(tabs)/game/${id}/edit`);
+    const goManage = () => router.push(`/(tabs)/game/${id}/manage`);
     const doDelete = async () => {
       const ok = await confirm({
         title: 'Delete game',
@@ -110,24 +116,25 @@ export default function GameDetailsScreen() {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Edit game', 'Delete game'],
+          options: ['Cancel', 'Edit game', 'Manage participants', 'Delete game'],
           cancelButtonIndex: 0,
-          destructiveButtonIndex: 2,
+          destructiveButtonIndex: 3,
         },
         (idx) => {
           if (idx === 1) goEdit();
-          if (idx === 2) void doDelete();
+          if (idx === 2) goManage();
+          if (idx === 3) void doDelete();
         }
       );
     } else {
       // Simple non-iOS flow
       (async () => {
-        const ok = await confirm({
+        const choice = await confirm({
           title: 'Owner actions',
-          message: 'Choose an action: Edit (OK) or use Delete button below to remove.',
-          confirmText: 'Edit',
+          message: 'Press Edit to change details, or OK to open Management.',
+          confirmText: 'Manage',
         });
-        if (ok) goEdit();
+        if (choice) goManage();
       })();
     }
   };
@@ -280,6 +287,13 @@ export default function GameDetailsScreen() {
                 <FontAwesome name="qrcode" size={20} />
               </Pressable>
               <Pressable
+                onPress={() => router.push(`/(tabs)/game/${id}/chat`)}
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                accessibilityLabel="Open chat"
+              >
+                <FontAwesome name="comments" size={20} />
+              </Pressable>
+              <Pressable
                 onPress={async () => {
                   try {
                     const { url } = await createInvite(id as string);
@@ -330,6 +344,19 @@ export default function GameDetailsScreen() {
           ),
         }}
       />
+
+      {useWsConnected() ? (
+        <RNView style={{ alignSelf: 'flex-start', backgroundColor: '#dcfce7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginBottom: 6 }}>
+          <Text style={{ color: '#166534' }}>Live</Text>
+        </RNView>
+      ) : null}
+
+      {/* Cached indicator when stale or offline but still rendering data */}
+      {(!useOnline() || (isStale && data)) && !isRefetching ? (
+        <RNView style={{ alignSelf: 'flex-start', backgroundColor: '#fff7ed', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, marginBottom: 6 }}>
+          <Text style={{ color: '#9a3412' }}>Showing cached data</Text>
+        </RNView>
+      ) : null}
 
       {isError ? (
         <View style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 6, marginBottom: 8 }}>

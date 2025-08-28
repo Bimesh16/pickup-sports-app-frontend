@@ -9,9 +9,11 @@ import {
   StyleSheet,
   TextInput,
   View as RNView,
+  Platform,
 } from 'react-native';
 import { Link } from 'expo-router';
 import * as Linking from 'expo-linking';
+import { distanceKm } from '@/src/utils/geo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import { useToast } from '@/src/components/ToastProvider';
@@ -27,13 +29,17 @@ import { useOnline, onOnline } from '@/src/components/OfflineBanner';
 import { useInfiniteGames } from '@/src/features/games/hooks/useInfiniteGames';
 import { useAuthStore } from '@/src/stores/auth';
 import { isFull as isGameFull, slotsLeft } from '@/src/utils/capacity';
+import { useOnboardingStore } from '@/src/stores/onboarding';
+import CitySwitcher from '@/src/features/discovery/components/CitySwitcher';
+import { useSavedFilters, type SavedFilter } from '@/src/stores/savedFilters';
+import { useDiscoveryPrefs } from '@/src/stores/discoveryPrefs';
 
 type Props = {
   initialShowJoined?: boolean;
   allowToggle?: boolean;
 };
 
-type TimeFilter = 'all' | 'today' | 'week';
+type TimeFilter = 'all' | 'today' | 'week' | 'weekend';
 
 function isToday(dateISO: string) {
   const d = new Date(dateISO);
@@ -235,6 +241,15 @@ function GameCard({
           {game.location}
         </Text>
       ) : null}
+      {/* Distance (if user coords available and game has coords) */}
+      {typeof obLat === 'number' &&
+      typeof obLon === 'number' &&
+      typeof (game as any).latitude === 'number' &&
+      typeof (game as any).longitude === 'number' ? (
+        <Text allowFontScaling numberOfLines={1}>
+          {distanceKm(obLat, obLon, (game as any).latitude, (game as any).longitude).toFixed(1)} km away
+        </Text>
+      ) : null}
       <Text allowFontScaling numberOfLines={1}>{when}</Text>
       {typeof game.playersCount === 'number' && typeof game.maxPlayers === 'number' ? (
         <>
@@ -270,8 +285,47 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
   const { lastQuery, showJoinedDefault, timeFilter: savedTimeFilter, setLastQuery, setShowJoinedDefault, setTimeFilter: saveTimeFilter, _rehydrated } = usePrefs();
 
   const [showJoined, setShowJoined] = useState<boolean>(initialShowJoined || showJoinedDefault);
-  const [query, setQuery] = useState<string>(lastQuery);
+  // Seed initial query with onboarding sports/city if no saved lastQuery
+  const obCity = useOnboardingStore((s) => s.city);
+  const obSports = useOnboardingStore((s) => s.sportPrefs);
+  const obRadiusKm = useOnboardingStore((s) => s.radiusKm ?? undefined);
+  const setCityStore = useOnboardingStore((s) => s.setCity);
+  const setRadiusKmStore = useOnboardingStore((s) => s.setRadiusKm);
+  const seededQuery = lastQuery && lastQuery.trim().length > 0 ? lastQuery : (obSports?.[0] ?? obCity ?? '');
+  const [query, setQuery] = useState<string>(seededQuery);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(savedTimeFilter ?? 'all');
+  const [skillFilter, setSkillFilter] = useState<'all' | 'Beginner' | 'Intermediate' | 'Advanced'>('all');
+  const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [sportFilter, setSportFilter] = useState<'All' | 'Soccer' | 'Basketball' | 'Tennis' | 'Volleyball' | 'Pickleball'>(
+    (obSports?.[0] as any) ?? 'All'
+  );
+
+  // Discovery defaults persistence
+  const {
+    lastSportFilter,
+    lastSkillFilter,
+    setLastSportFilter,
+    setLastSkillFilter,
+    _rehydrated: discoveryReady,
+  } = useDiscoveryPrefs();
+
+  // Initialize from persisted values when rehydrated (one-time align)
+  useEffect(() => {
+    if (!discoveryReady) return;
+    if (lastSportFilter && lastSportFilter !== sportFilter) setSportFilter(lastSportFilter as any);
+    if (lastSkillFilter && lastSkillFilter !== skillFilter) setSkillFilter(lastSkillFilter as any);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discoveryReady]);
+
+  // Persist on change after hydration
+  useEffect(() => {
+    if (discoveryReady) setLastSportFilter(sportFilter as any);
+  }, [sportFilter, discoveryReady, setLastSportFilter]);
+
+  useEffect(() => {
+    if (discoveryReady) setLastSkillFilter(skillFilter as any);
+  }, [skillFilter, discoveryReady, setLastSkillFilter]);
+  const [sortByDistance, setSortByDistance] = useState<boolean>(false);
   const debouncedQuery = useDebouncedValue(query, 350);
   const listRef = useRef<FlatList<Game> | null>(null);
 
@@ -279,6 +333,46 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
   useEffect(() => {
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, [showJoined, timeFilter]);
+
+  // Compute time window for server-side filters
+  const now = new Date();
+  let fromTime: string | undefined;
+  let toTime: string | undefined;
+  if (timeFilter === 'today') {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    fromTime = start.toISOString();
+    toTime = end.toISOString();
+  } else if (timeFilter === 'week') {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+    fromTime = start.toISOString();
+    toTime = end.toISOString();
+  } else if (timeFilter === 'weekend') {
+    // Next Friday 17:00 to Sunday 23:59:59
+    const start = new Date();
+    const day = start.getDay(); // 0=Sun..6=Sat
+    const daysToFri = (5 - day + 7) % 7;
+    start.setDate(start.getDate() + daysToFri);
+    start.setHours(17, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 2); // Sunday
+    end.setHours(23, 59, 59, 999);
+    // If we are already past this weekend end, jump to next weekend
+    if (now > end) {
+      start.setDate(start.getDate() + 7);
+      end.setDate(end.getDate() + 7);
+    }
+    fromTime = start.toISOString();
+    toTime = end.toISOString();
+  }
+
+  const obLat = useOnboardingStore((s) => s.latitude ?? undefined);
+  const obLon = useOnboardingStore((s) => s.longitude ?? undefined);
+  const obSkill = useOnboardingStore((s) => (s.skillLevel ? String(s.skillLevel) : undefined));
 
   const {
     data,
@@ -294,6 +388,14 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
   } = useInfiniteGames({
     q: debouncedQuery || undefined,
     joined: showJoined || undefined,
+    sport: sportFilter !== 'All' ? sportFilter : (obSports?.[0] || undefined),
+    location: obCity || undefined,
+    skillLevel: skillFilter !== 'all' ? skillFilter : obSkill,
+    fromTime,
+    toTime,
+    lat: typeof obLat === 'number' ? obLat : undefined,
+    lon: typeof obLon === 'number' ? obLon : undefined,
+    radiusKm: obRadiusKm,
   });
   const { join, leave, joinPendingId, leavePendingId } = useJoinLeaveOptimistic();
   const online = useOnline();
@@ -334,12 +436,33 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
     let filtered = showJoined ? all.filter((g) => g.joined) : all;
     if (timeFilter === 'today') filtered = filtered.filter((g) => isToday(g.startsAt));
     else if (timeFilter === 'week') filtered = filtered.filter((g) => isThisWeek(g.startsAt));
-    if (!debouncedQuery.trim()) return filtered;
-    const q = debouncedQuery.toLowerCase();
-    return filtered.filter((g) =>
-      [g.title, g.location, g.sport, g.description].some((v) => (v ?? '').toLowerCase().includes(q))
-    );
-  }, [all, showJoined, debouncedQuery, timeFilter]);
+
+    // Text filter
+    let result = filtered;
+    if (debouncedQuery.trim()) {
+      const q = debouncedQuery.toLowerCase();
+      result = filtered.filter((g) =>
+        [g.title, g.location, g.sport, g.description].some((v) => (v ?? '').toLowerCase().includes(q))
+      );
+    }
+
+    // Distance sort if enabled and we have user coords + game coords
+    if (sortByDistance && typeof obLat === 'number' && typeof obLon === 'number') {
+      result = result
+        .slice()
+        .sort((a, b) => {
+          const da = typeof (a as any).latitude === 'number' && typeof (a as any).longitude === 'number'
+            ? distanceKm(obLat, obLon, (a as any).latitude, (a as any).longitude)
+            : Number.POSITIVE_INFINITY;
+          const db = typeof (b as any).latitude === 'number' && typeof (b as any).longitude === 'number'
+            ? distanceKm(obLat, obLon, (b as any).latitude, (b as any).longitude)
+            : Number.POSITIVE_INFINITY;
+          return da - db;
+        });
+    }
+
+    return result;
+  }, [all, showJoined, debouncedQuery, timeFilter, sortByDistance, obLat, obLon]);
 
   const updatedMinutesAgo = useMemo(() => {
     if (!dataUpdatedAt) return 0;
@@ -353,23 +476,7 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
     return () => clearInterval(t);
   }, [refetch]);
 
-  if (isLoading && !data) {
-    return (
-      <View style={styles.container}>
-        <RNView style={styles.toolbar}>
-          <TextInput style={styles.search} placeholder="Search games..." value={query} onChangeText={setQuery} />
-          {allowToggle ? <Button title={showJoined ? 'Show all' : 'Show joined'} onPress={() => setShowJoined((v) => !v)} /> : null}
-        </RNView>
-        <FlatList
-          data={[...Array(6).keys()]}
-          keyExtractor={(i) => `sk-${i}`}
-          renderItem={() => <SkeletonCard />}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
-        />
-      </View>
-    );
-  }
-
+  // Define hooks BEFORE any early return to keep hook order consistent
   const hasPages = !!data?.pages && (Array.isArray(data.pages) ? data.pages.length > 0 : false);
 
   // Auto-retry non-blocking errors (when some data already exists) with gentle backoff (max 3 tries)
@@ -387,6 +494,23 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
       autoRetryRef.current = 0;
     }
   }, [isError, hasPages, isRefetching, refetch]);
+
+  if (isLoading && !data) {
+    return (
+      <View style={styles.container}>
+        <RNView style={styles.toolbar}>
+          <TextInput style={styles.search} placeholder="Search games..." value={query} onChangeText={setQuery} />
+          {allowToggle ? <Button title={showJoined ? 'Show all' : 'Show joined'} onPress={() => setShowJoined((v) => !v)} /> : null}
+        </RNView>
+        <FlatList
+          data={[...Array(6).keys()]}
+          keyExtractor={(i) => `sk-${i}`}
+          renderItem={() => <SkeletonCard />}
+          contentContainerStyle={{ padding: 16, gap: 12 }}
+        />
+      </View>
+    );
+  }
 
   if (isError && !hasPages) {
     return (
@@ -425,6 +549,126 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
         <Button title="All" onPress={() => setTimeFilter('all')} />
         <Button title="Today" onPress={() => setTimeFilter('today')} />
         <Button title="This week" onPress={() => setTimeFilter('week')} />
+        <Button title="Weekend" onPress={() => setTimeFilter('weekend')} />
+        <Button title="Change city" onPress={() => setCityModalVisible(true)} />
+      </RNView>
+      <RNView style={styles.filterRow}>
+        <Button
+          title={sortByDistance ? 'Sorted by distance' : 'Sort by distance'}
+          onPress={() => setSortByDistance((v) => !v)}
+          disabled={!(typeof obLat === 'number' && typeof obLon === 'number')}
+        />
+        <Button
+          title="Near me"
+          onPress={async () => {
+            let Location: any = null;
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-var-requires
+              Location = require('expo-location');
+            } catch {
+              Location = null;
+            }
+            if (!Location) {
+              toast.error('Location module not available');
+              return;
+            }
+            try {
+              const { status } = await Location.requestForegroundPermissionsAsync();
+              if (status !== 'granted') {
+                toast.error('Location permission denied');
+                return;
+              }
+              const { coords } = await Location.getCurrentPositionAsync({});
+              if (coords?.latitude && coords?.longitude) {
+                // Best effort reverse geocode for city name
+                let cityName = 'Current location';
+                try {
+                  const places = await Location.reverseGeocodeAsync({
+                    latitude: coords.latitude,
+                    longitude: coords.longitude,
+                  });
+                  cityName = places?.[0]?.city || places?.[0]?.region || cityName;
+                } catch {
+                  // ignore
+                }
+                setCityStore(cityName, coords.latitude, coords.longitude);
+                if (obRadiusKm == null) setRadiusKmStore(15);
+                listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                refetch();
+              }
+            } catch (e) {
+              toast.error('Unable to get location');
+            }
+          }}
+        />
+        <Button
+          title="Open map"
+          onPress={() => {
+            const q = encodeURIComponent(`${sportFilter !== 'All' ? sportFilter + ' ' : ''}${obCity ?? ''}`.trim() || 'sports');
+            const url = Platform.select({
+              ios: `http://maps.apple.com/?q=${q}`,
+              android: `geo:0,0?q=${q}`,
+              default: `https://www.google.com/maps/search/?api=1&query=${q}`,
+            }) as string;
+            Linking.openURL(url);
+          }}
+        />
+      </RNView>
+      <RNView style={styles.filterRow}>
+        <Button title="All skills" onPress={() => setSkillFilter('all')} />
+        <Button title="Beginner" onPress={() => setSkillFilter('Beginner')} />
+        <Button title="Intermediate" onPress={() => setSkillFilter('Intermediate')} />
+        <Button title="Advanced" onPress={() => setSkillFilter('Advanced')} />
+      </RNView>
+
+      {/* Sport chips */}
+      <RNView style={styles.filterRow}>
+        <Button title={sportFilter === 'All' ? 'All sports ✓' : 'All sports'} onPress={() => setSportFilter('All')} />
+        <Button title={sportFilter === 'Soccer' ? 'Soccer ✓' : 'Soccer'} onPress={() => setSportFilter('Soccer')} />
+        <Button title={sportFilter === 'Basketball' ? 'Basketball ✓' : 'Basketball'} onPress={() => setSportFilter('Basketball')} />
+        <Button title={sportFilter === 'Tennis' ? 'Tennis ✓' : 'Tennis'} onPress={() => setSportFilter('Tennis')} />
+        <Button title={sportFilter === 'Volleyball' ? 'Volleyball ✓' : 'Volleyball'} onPress={() => setSportFilter('Volleyball')} />
+        <Button title={sportFilter === 'Pickleball' ? 'Pickleball ✓' : 'Pickleball'} onPress={() => setSportFilter('Pickleball')} />
+      </RNView>
+
+      {/* Saved filters chips row */}
+      <SavedFiltersChips
+        onApply={(f) => {
+          if (f.city != null) setCityStore(f.city, undefined, undefined);
+          if (f.radiusKm !== undefined) setRadiusKmStore(f.radiusKm ?? null);
+          setSportFilter((f.sport as any) ?? 'All');
+          // Optional: clear text query when applying a sport preset
+          setQuery(f.sport ?? '');
+          setSkillFilter((f.skillLevel as any) ?? 'all');
+          setTimeFilter((f.timeFilter as any) ?? 'all');
+          listRef.current?.scrollToOffset({ offset: 0, animated: true });
+          refetch();
+        }}
+      />
+
+      <RNView style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
+        <Button
+          title="Save current filters"
+          onPress={() => {
+            const effectiveSport = sportFilter !== 'All' ? sportFilter : (obSports?.[0] || undefined);
+            const nameParts: string[] = [];
+            if (obCity) nameParts.push(obCity);
+            if (effectiveSport) nameParts.push(effectiveSport);
+            if (skillFilter !== 'all') nameParts.push(skillFilter);
+            nameParts.push(timeFilter === 'all' ? 'Any time' : timeFilter === 'today' ? 'Today' : 'This week');
+            const name = nameParts.join(' • ') || 'My filter';
+            const toSave: SavedFilter = {
+              id: `${Date.now()}`,
+              name,
+              city: obCity || undefined,
+              sport: effectiveSport || undefined,
+              skillLevel: skillFilter !== 'all' ? (skillFilter as any) : undefined,
+              timeFilter,
+              radiusKm: obRadiusKm ?? null,
+            };
+            useSavedFilters.getState().add(toSave);
+          }}
+        />
       </RNView>
       {(showJoined || timeFilter !== 'all' || query.trim()) ? (
         <RNView style={{ paddingHorizontal: 16, paddingBottom: 4 }}>
@@ -453,6 +697,19 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
         />
       ) : (
         <>
+          <CitySwitcher
+            visible={cityModalVisible}
+            initialCity={obCity}
+            initialRadiusKm={obRadiusKm}
+            onClose={() => setCityModalVisible(false)}
+            onApply={({ city, radiusKm }) => {
+              setCityModalVisible(false);
+              setCityStore(city || '', undefined, undefined);
+              setRadiusKmStore(radiusKm ?? null);
+              listRef.current?.scrollToOffset({ offset: 0, animated: true });
+              refetch();
+            }}
+          />
           <FlatList
             ref={(r) => (listRef.current = r as any)}
             data={list}
@@ -512,6 +769,41 @@ export default function GamesList({ initialShowJoined = false, allowToggle = tru
                     <Button title={isRefetching ? 'Retrying…' : 'Retry now'} onPress={() => refetch()} />
                   </RNView>
                 ) : null}
+
+                {/* Cached data indicator when offline or serving cached pages despite an error */}
+                {(!online || (isError && hasPages)) && !isRefetching ? (
+                  <RNView style={{ alignSelf: 'flex-start', backgroundColor: '#fff7ed', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, marginTop: 4 }}>
+                    <Text style={{ color: '#9a3412' }}>Showing cached data</Text>
+                  </RNView>
+                ) : null}
+
+                {(obCity || (skillFilter !== 'all') || (obSports?.[0]) || (sportFilter !== 'All')) ? (
+                  <RNView style={{ marginTop: 8, marginBottom: 4, padding: 8, borderRadius: 8, backgroundColor: '#f3f4f6' }}>
+                    <Text allowFontScaling numberOfLines={2}>
+                      Showing results for
+                      {obCity ? ` • City: ${obCity}` : ''}
+                      {sportFilter !== 'All' ? ` • Sport: ${sportFilter}` : (obSports?.[0] ? ` • Sport: ${obSports[0]}` : '')}
+                      {skillFilter !== 'all' ? ` • Skill: ${skillFilter}` : ''}
+                      {typeof obRadiusKm === 'number' ? ` • Radius: ${obRadiusKm}km` : ''}
+                    </Text>
+                    <RNView style={{ marginTop: 6 }}>
+                      <Button
+                        title="Clear"
+                        onPress={() => {
+                          setCityStore('', null, null);
+                          setRadiusKmStore(null);
+                          setSkillFilter('all');
+                          setSportFilter('All');
+                          setTimeFilter('all');
+                          setQuery('');
+                          listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                          refetch();
+                        }}
+                      />
+                    </RNView>
+                  </RNView>
+                ) : null}
+
                 {!isLoading && !isRefetching ? (
                   <Text style={{ marginTop: 4, color: '#6b7280' }}>
                     Updated {updatedMinutesAgo} min ago
@@ -581,3 +873,26 @@ const styles = StyleSheet.create({
   },
   pillErrorText: { color: '#991b1b' },
 });
+
+function SavedFiltersChips({ onApply }: { onApply: (f: import('@/src/stores/savedFilters').SavedFilter) => void }) {
+  const { filters, remove } = useSavedFilters();
+  if (!filters?.length) return null;
+  return (
+    <RNView style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {filters.map((f) => (
+        <Pressable
+          key={f.id}
+          onPress={() => onApply(f)}
+          onLongPress={() => remove(f.id)}
+          style={({ pressed }) => [
+            { backgroundColor: '#e5e7eb', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
+            { opacity: pressed ? 0.7 : 1 },
+          ]}
+          accessibilityLabel={`Apply saved filter ${f.name}`}
+        >
+          <Text allowFontScaling numberOfLines={1}>{f.name}</Text>
+        </Pressable>
+      ))}
+    </RNView>
+  );
+}
