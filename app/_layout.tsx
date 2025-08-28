@@ -4,7 +4,7 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -55,15 +55,29 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const user = useAuthStore((s) => s.user);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     const inAuthGroup = segments[0] === '(auth)';
+    
+    // Wait for auth bootstrap to complete before doing routing
+    // We know bootstrap is done when either user is set (authenticated) or explicitly null (not authenticated)
+    const isBootstrapComplete = user !== undefined;
+    
+    if (!isBootstrapComplete && isInitialLoad) {
+      return; // Wait for bootstrap to complete
+    }
+
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+
     if (!user?.authenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (user?.authenticated && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [user, router, segments]);
+  }, [user, router, segments, isInitialLoad]);
 
   // Deep link handling: /game/:id?join=1 or invite=true
   useEffect(() => {
