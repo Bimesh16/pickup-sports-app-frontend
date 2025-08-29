@@ -32,8 +32,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   sessions: [],
   mfaEnabled: false,
-  setUser: (u) => set({ user: u }),
+  setUser: (u) => {
+    console.log('🔍 AuthStore: Setting user:', u ? { ...u, roles: u.roles } : null);
+    set({ user: u });
+  },
   setSessions: (s) => set({ sessions: s }),
   setMfaEnabled: (v) => set({ mfaEnabled: v }),
-  clear: () => set({ user: null, sessions: [], mfaEnabled: false }),
+  clear: () => {
+    console.log('🔍 AuthStore: Clearing user');
+    set({ user: null, sessions: [], mfaEnabled: false });
+  },
 }));

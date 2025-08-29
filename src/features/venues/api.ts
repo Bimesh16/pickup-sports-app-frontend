@@ -10,7 +10,7 @@ import type {
 
 // Venue Management APIs
 export async function fetchVenues(query: VenuesQuery = {}): Promise<PaginatedResponse<Venue>> {
-  const { data } = await api.get('/api/v1/venues', {
+  const { data } = await api.get('/venues', {
     params: {
       name: query.name,
       city: query.city,
@@ -24,28 +24,28 @@ export async function fetchVenues(query: VenuesQuery = {}): Promise<PaginatedRes
 }
 
 export async function fetchVenue(id: number): Promise<Venue> {
-  const { data } = await api.get(`/api/v1/venues/${id}`, {
+  const { data } = await api.get(`/venues/${id}`, {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
 }
 
 export async function createVenue(venue: CreateVenueRequest): Promise<Venue> {
-  const { data } = await api.post('/api/v1/venues', venue, {
+  const { data } = await api.post('/venues', venue, {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
 }
 
 export async function updateVenue(id: number, venue: Partial<CreateVenueRequest>): Promise<Venue> {
-  const { data } = await api.put(`/api/v1/venues/${id}`, venue, {
+  const { data } = await api.put(`/venues/${id}`, venue, {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
 }
 
 export async function deleteVenue(id: number): Promise<void> {
-  await api.delete(`/api/v1/venues/${id}`, {
+  await api.delete(`/venues/${id}`, {
     headers: { 'Cache-Control': 'no-store' }
   });
 }
@@ -85,13 +85,10 @@ export async function searchNearbyVenues(
   radiusKm: number = 10,
   sport?: string
 ): Promise<Venue[]> {
-  const { data } = await api.get('/api/v1/venues', {
+  const { data } = await api.get('/venues/search', {
     params: {
-      latitude,
-      longitude,
-      radius: radiusKm,
       sport,
-      size: 50
+      radius: radiusKm
     },
     headers: { 'Cache-Control': 'no-store' }
   });

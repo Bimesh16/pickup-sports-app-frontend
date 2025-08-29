@@ -45,7 +45,7 @@ export default function UserSocialConnectionsCard({ connections }: UserSocialCon
     <View style={styles.container}>
       <Text style={styles.title}>Social Connections</Text>
       
-      {connections.length === 0 ? (
+      {!connections || connections.length === 0 ? (
         <RNView style={styles.emptyState}>
           <Text style={styles.emptyIcon}>🤝</Text>
           <Text style={styles.emptyText}>No connections yet</Text>
@@ -69,7 +69,7 @@ export default function UserSocialConnectionsCard({ connections }: UserSocialCon
                     {connection.gamesPlayedTogether} games together
                   </Text>
                   <Text style={styles.connectionSports}>
-                    {connection.favoriteSports.slice(0, 3).join(', ')}
+                    {connection.favoriteSports?.slice(0, 3).join(', ') || 'No sports listed'}
                   </Text>
                 </RNView>
                 <RNView style={styles.connectionStrength}>

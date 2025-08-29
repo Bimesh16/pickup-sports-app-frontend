@@ -19,13 +19,15 @@ export default function UserPreferencesCard({ stats }: UserPreferencesCardProps)
         <Text style={styles.sectionTitle}>Favorite Sports</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <RNView style={styles.chipsContainer}>
-            {stats.favoriteSports.map((sport, index) => (
+            {stats.favoriteSports?.map((sport, index) => (
               <RNView key={sport.sport} style={styles.chip}>
                 <Text style={styles.chipText}>{sport.sport}</Text>
                 <Text style={styles.chipSubtext}>{sport.count} games</Text>
                 <Text style={styles.chipPercentage}>{formatPercentage(sport.percentage)}</Text>
               </RNView>
-            ))}
+            )) || (
+              <Text style={styles.emptyText}>No favorite sports yet</Text>
+            )}
           </RNView>
         </ScrollView>
       </RNView>
@@ -35,13 +37,15 @@ export default function UserPreferencesCard({ stats }: UserPreferencesCardProps)
         <Text style={styles.sectionTitle}>Favorite Venues</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <RNView style={styles.chipsContainer}>
-            {stats.favoriteVenues.map((venue, index) => (
+            {stats.favoriteVenues?.map((venue, index) => (
               <RNView key={venue.venueId} style={styles.chip}>
                 <Text style={styles.chipText}>{venue.venueName}</Text>
                 <Text style={styles.chipSubtext}>{venue.count} visits</Text>
                 <Text style={styles.chipPercentage}>{formatPercentage(venue.percentage)}</Text>
               </RNView>
-            ))}
+            )) || (
+              <Text style={styles.emptyText}>No favorite venues yet</Text>
+            )}
           </RNView>
         </ScrollView>
       </RNView>
@@ -50,13 +54,15 @@ export default function UserPreferencesCard({ stats }: UserPreferencesCardProps)
       <RNView style={styles.section}>
         <Text style={styles.sectionTitle}>Preferred Times</Text>
         <RNView style={styles.timeSlotsContainer}>
-          {stats.preferredTimeSlots.map((timeSlot) => (
+          {stats.preferredTimeSlots?.map((timeSlot) => (
             <RNView key={timeSlot.timeSlot} style={styles.timeSlotItem}>
               <Text style={styles.timeSlotLabel}>{timeSlot.timeSlot}</Text>
               <Text style={styles.timeSlotCount}>{timeSlot.count} games</Text>
               <Text style={styles.timeSlotPercentage}>{formatPercentage(timeSlot.percentage)}</Text>
             </RNView>
-          ))}
+          )) || (
+            <Text style={styles.emptyText}>No preferred times yet</Text>
+          )}
         </RNView>
       </RNView>
     </View>
@@ -147,6 +153,13 @@ const styles = StyleSheet.create({
     color: '#3b82f6',
     minWidth: 40,
     textAlign: 'right',
+  },
+  emptyText: {
+    fontSize: 14,
+    opacity: 0.6,
+    color: '#6b7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
 

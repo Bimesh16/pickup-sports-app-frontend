@@ -38,7 +38,7 @@ export default function UserAchievementsCard({ achievements }: UserAchievementsC
     <View style={styles.container}>
       <Text style={styles.title}>Achievements & Badges</Text>
       
-      {achievements.length === 0 ? (
+      {!achievements || achievements.length === 0 ? (
         <RNView style={styles.emptyState}>
           <Text style={styles.emptyIcon}>🏆</Text>
           <Text style={styles.emptyText}>No achievements yet</Text>

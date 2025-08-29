@@ -12,5 +12,16 @@ export default function AdminLayout() {
     }
   }, [user, router]);
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack 
+      screenOptions={{ 
+        headerShown: true,
+        headerBackTitle: 'Back',
+        headerTintColor: '#DC2626', // Nepal crimson
+        headerStyle: {
+          backgroundColor: '#FFFFFF',
+        },
+      }} 
+    />
+  );
 }

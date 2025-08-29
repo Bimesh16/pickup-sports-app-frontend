@@ -3,7 +3,16 @@ import { Stack } from 'expo-router';
 
 export default function OnboardingLayout() {
   return (
-    <Stack screenOptions={{ headerTitle: '' }}>
+    <Stack 
+      screenOptions={{ 
+        headerTitle: '',
+        headerBackTitle: 'Back',
+        headerTintColor: '#DC2626', // Nepal crimson
+        headerStyle: {
+          backgroundColor: '#FFFFFF',
+        },
+      }}
+    >
       <Stack.Screen name="location" options={{ title: 'Choose city' }} />
       <Stack.Screen name="sports" options={{ title: 'Your sports' }} />
       <Stack.Screen name="skill" options={{ title: 'Skill level' }} />

@@ -8,6 +8,12 @@ export function useUserGameHistory(username: string | undefined, pageSize = 20) 
     queryFn: ({ pageParam = 0 }) => fetchUserGameHistory(username!, pageParam, pageSize),
     enabled: !!username && username.trim().length > 0,
     getNextPageParam: (lastPage) => {
+      // Add safety checks for undefined content
+      if (!lastPage?.content || !Array.isArray(lastPage.content)) {
+        console.warn('useUserGameHistory: lastPage.content is undefined or not an array:', lastPage);
+        return undefined;
+      }
+      
       if (lastPage.totalPages > lastPage.content.length / pageSize) {
         return Math.floor(lastPage.content.length / pageSize);
       }

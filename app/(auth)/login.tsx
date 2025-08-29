@@ -1,133 +1,304 @@
-import React, { useMemo, useState } from 'react';
-import { Button, Pressable, StyleSheet, TextInput, View as RNView } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Text, View } from '@/components/Themed';
-import { useToast } from '@/src/components/ToastProvider';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { AppLogo } from '@/src/components/branding/AppLogo';
+import { PrimaryButton, OutlineButton } from '@/src/components/ui/Button';
+import { Card } from '@/src/components/ui/Card';
 import { useLogin } from '@/src/features/auth/hooks/useLogin';
+import { Colors } from '@/src/constants/Colors';
+import Theme from '@/src/constants/Theme';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
-  const [usernameBlurred, setUsernameBlurred] = useState(false);
   const [password, setPassword] = useState('');
-  const [passwordBlurred, setPasswordBlurred] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberDevice, setRememberDevice] = useState(true);
-  const [captchaToken, setCaptchaToken] = useState('');
-  const toast = useToast();
-  const router = useRouter();
-  const login = useLogin();
+  
+  const loginMutation = useLogin();
 
-  const errors = useMemo(() => {
-    return {
-      username: !username.trim() && usernameBlurred ? 'Username is required' : null,
-      password: passwordBlurred && password.length < 6 ? 'Password must be at least 6 characters' : null,
-    };
-  }, [username, usernameBlurred, password, passwordBlurred]);
+  const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please enter both username and password');
+      return;
+    }
 
-  const canSubmit = useMemo(() => username.trim() && password.length >= 6, [username, password]);
-
-  const onSubmit = async () => {
-    if (!canSubmit || login.isPending) return;
     try {
-      const res = await login.mutateAsync({
+      const result = await loginMutation.mutateAsync({
         username: username.trim(),
-        password,
-        rememberDevice,
-        captchaToken: captchaToken.trim() || undefined,
+        password: password.trim(),
       });
-      if ('mfaRequired' in res && res.mfaRequired) {
-        router.push({ pathname: '/(auth)/mfa', params: { username: username.trim(), challenge: res.challenge } } as any);
-        return;
+
+      if ('user' in result) {
+        // Login successful, navigation will be handled by root layout
+        Alert.alert('Success', 'नमस्ते! Welcome to PickupSports!');
+      } else if (result.mfaRequired) {
+        // Handle MFA if your backend supports it
+        Alert.alert('MFA Required', 'Please complete multi-factor authentication');
       }
-      toast.success('Welcome back!');
-      router.replace('/(tabs)' as any);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Sign in failed');
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.message || 'Please check your credentials');
     }
   };
 
+  const handleRegister = () => {
+    router.push('/(auth)/register');
+  };
+
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Sign in' }} />
-      <Text style={styles.title}>Sign in</Text>
-      <RNView style={styles.row}>
-        <TextInput
-          style={styles.input}
-          placeholder="Username"
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={username}
-          onChangeText={setUsername}
-          onBlur={() => setUsernameBlurred(true)}
-          onSubmitEditing={onSubmit}
-          blurOnSubmit
-        />
-        {errors.username ? <Text style={styles.error}>{errors.username}</Text> : null}
-      </RNView>
-      <RNView style={styles.row}>
-        <RNView style={styles.passwordRow}>
-          <TextInput
-            style={[styles.input, { flex: 1 }]}
-            placeholder="Password"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-            onBlur={() => setPasswordBlurred(true)}
-            onSubmitEditing={onSubmit}
-            blurOnSubmit
-          />
-          <Pressable onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
-            <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} size={18} />
-          </Pressable>
-        </RNView>
-        {errors.password ? <Text style={styles.error}>{errors.password}</Text> : null}
-      </RNView>
-      <RNView style={styles.row}>
-        <TextInput
-          style={styles.input}
-          placeholder="CAPTCHA token (optional)"
-          autoCapitalize="none"
-          value={captchaToken}
-          onChangeText={setCaptchaToken}
-          onSubmitEditing={onSubmit}
-          blurOnSubmit
-        />
-      </RNView>
-      <RNView style={styles.inline}>
-        <Button title={rememberDevice ? 'Remember device: ON' : 'Remember device: OFF'} onPress={() => setRememberDevice((v) => !v)} />
-      </RNView>
-      <Button title={login.isPending ? 'Signing in…' : 'Sign in'} onPress={onSubmit} disabled={!canSubmit || login.isPending} />
-      <RNView style={styles.inline}>
-        <Button title="Create account" onPress={() => router.push('/(auth)/register' as any)} />
-        <Button title="Forgot password" onPress={() => router.push('/(auth)/forgot' as any)} />
-        <Button
-          title="Verify email"
-          onPress={() =>
-            router.push({
-              pathname: '/(auth)/verify-email',
-              params: { username: username.trim() || undefined },
-            } as any)
-          }
-        />
-      </RNView>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={Colors.gradients.nepal}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.background}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardContainer}
+        >
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Logo Section */}
+            <View style={styles.logoSection}>
+              <AppLogo size="xl" variant="full" showTagline />
+              <Text style={styles.welcomeText}>🇳🇵 नमस्ते!</Text>
+              <Text style={styles.subtitleText}>Welcome to Nepal's Sports Community</Text>
+            </View>
+
+            {/* Login Form */}
+            <Card style={styles.formCard}>
+              <Text style={styles.formTitle}>Sign In</Text>
+              <Text style={styles.formSubtitle}>लगइन गर्नुहोस्</Text>
+
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
+                  <Ionicons 
+                    name="person-outline" 
+                    size={20} 
+                    color={Colors.text.secondary} 
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Username"
+                    placeholderTextColor={Colors.text.secondary}
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                  />
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  <Ionicons 
+                    name="lock-closed-outline" 
+                    size={20} 
+                    color={Colors.text.secondary} 
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    placeholder="Password"
+                    placeholderTextColor={Colors.text.secondary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.passwordToggle}
+                  >
+                    <Ionicons 
+                      name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                      size={20} 
+                      color={Colors.text.secondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <PrimaryButton
+                title={loginMutation.isPending ? "Signing In..." : "Sign In"}
+                onPress={handleLogin}
+                disabled={loginMutation.isPending}
+                loading={loginMutation.isPending}
+                fullWidth
+                style={styles.loginButton}
+              />
+
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <OutlineButton
+                title="Create Account"
+                onPress={handleRegister}
+                fullWidth
+                style={styles.registerButton}
+              />
+            </Card>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                🏔️ From Himalaya to Terai - Find Your Game
+              </Text>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 12, justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: '600', textAlign: 'center', marginBottom: 8 },
-  row: { marginBottom: 8 },
-  inline: { flexDirection: 'row', gap: 8, justifyContent: 'space-between', marginTop: 8 },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+  container: {
+    flex: 1,
   },
-  error: { color: '#ef4444', marginTop: 4 },
+  
+  background: {
+    flex: 1,
+  },
+  
+  keyboardContainer: {
+    flex: 1,
+  },
+  
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: Theme.spacing[6],
+  },
+  
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: Theme.spacing[8],
+  },
+  
+  welcomeText: {
+    fontSize: Theme.typography.fontSize['2xl'],
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Colors.nepal.white,
+    marginTop: Theme.spacing[4],
+    marginBottom: Theme.spacing[2],
+  },
+  
+  subtitleText: {
+    fontSize: Theme.typography.fontSize.base,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+  },
+  
+  formCard: {
+    padding: Theme.spacing[6],
+    marginBottom: Theme.spacing[6],
+  },
+  
+  formTitle: {
+    fontSize: Theme.typography.fontSize['3xl'],
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Colors.text.primary,
+    textAlign: 'center',
+    marginBottom: Theme.spacing[1],
+  },
+  
+  formSubtitle: {
+    fontSize: Theme.typography.fontSize.base,
+    color: Colors.nepal.blue,
+    textAlign: 'center',
+    marginBottom: Theme.spacing[6],
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  
+  inputContainer: {
+    gap: Theme.spacing[4],
+    marginBottom: Theme.spacing[6],
+  },
+  
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background.secondary,
+    borderRadius: Theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    paddingHorizontal: Theme.spacing[4],
+  },
+  
+  inputIcon: {
+    marginRight: Theme.spacing[3],
+  },
+  
+  input: {
+    flex: 1,
+    fontSize: Theme.typography.fontSize.base,
+    color: Colors.text.primary,
+    paddingVertical: Theme.spacing[4],
+  },
+  
+  passwordInput: {
+    paddingRight: Theme.spacing[10], // Space for toggle button
+  },
+  
+  passwordToggle: {
+    position: 'absolute',
+    right: Theme.spacing[4],
+    padding: Theme.spacing[2],
+  },
+  
+  loginButton: {
+    marginBottom: Theme.spacing[4],
+  },
+  
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Theme.spacing[4],
+  },
+  
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border.light,
+  },
+  
+  dividerText: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: Colors.text.secondary,
+    marginHorizontal: Theme.spacing[4],
+  },
+  
+  registerButton: {
+    marginTop: Theme.spacing[2],
+  },
+  
+  footer: {
+    alignItems: 'center',
+  },
+  
+  footerText: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
 });

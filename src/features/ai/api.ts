@@ -12,7 +12,7 @@ import type {
 
 // AI Recommendations APIs
 export async function fetchComprehensiveRecommendations(userId?: number) {
-  const { data } = await api.get('/api/v1/ai/recommendations/comprehensive', {
+  const { data } = await api.get('/ai/recommendations', {
     params: userId ? { userId } : {},
     headers: { 'Cache-Control': 'no-store' }
   });
@@ -24,7 +24,7 @@ export async function fetchComprehensiveRecommendations(userId?: number) {
 }
 
 export async function fetchGameRecommendations(query: RecommendationsQuery = {}): Promise<GameRecommendation[]> {
-  const { data } = await api.get('/api/v1/ai/recommendations/games', {
+  const { data } = await api.get('/ai/recommendations/games', {
     params: {
       algorithm: query.algorithm,
       limit: query.limit || 10
@@ -35,7 +35,7 @@ export async function fetchGameRecommendations(query: RecommendationsQuery = {})
 }
 
 export async function fetchPlayerRecommendations(query: RecommendationsQuery = {}): Promise<PlayerRecommendation[]> {
-  const { data } = await api.get('/api/v1/ai/recommendations/players', {
+  const { data } = await api.get('/ai/recommendations/players', {
     params: {
       algorithm: query.algorithm,
       limit: query.limit || 10
@@ -46,7 +46,7 @@ export async function fetchPlayerRecommendations(query: RecommendationsQuery = {
 }
 
 export async function fetchVenueRecommendations(query: RecommendationsQuery = {}): Promise<VenueRecommendation[]> {
-  const { data } = await api.get('/api/v1/ai/recommendations/venues', {
+  const { data } = await api.get('/ai/recommendations/venues', {
     params: {
       algorithm: query.algorithm,
       limit: query.limit || 10
@@ -62,14 +62,14 @@ export async function submitRecommendationFeedback(feedback: {
   feedback: 'POSITIVE' | 'NEGATIVE';
   reason?: string;
 }): Promise<void> {
-  await api.post('/api/v1/ai/recommendations/feedback', feedback, {
+  await api.post('/ai/recommendations/feedback', feedback, {
     headers: { 'Cache-Control': 'no-store' }
   });
 }
 
 // Advanced Analytics APIs
 export async function fetchUserBehaviorAnalysis(userId: number): Promise<UserBehaviorAnalysis> {
-  const { data } = await api.get(`/api/v1/ai/analytics/user-behavior/${userId}`, {
+  const { data } = await api.get(`/ai/analytics/user-behavior/${userId}`, {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
@@ -84,7 +84,7 @@ export async function fetchDemandForecast(params: {
   accuracy: number;
   lastUpdated: string;
 }> {
-  const { data } = await api.get('/api/v1/ai/analytics/demand-forecast', {
+  const { data } = await api.get('/ai/analytics/demand-forecast', {
     params,
     headers: { 'Cache-Control': 'no-store' }
   });
@@ -92,7 +92,7 @@ export async function fetchDemandForecast(params: {
 }
 
 export async function fetchTrends(): Promise<TrendAnalysis> {
-  const { data } = await api.get('/api/v1/ai/analytics/trends', {
+  const { data } = await api.get('/ai/analytics/trends', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
@@ -112,7 +112,7 @@ export async function fetchGameOptimization(): Promise<{
     venueUtilization: number;
   };
 }> {
-  const { data } = await api.get('/api/v1/ai/analytics/game-optimization', {
+  const { data } = await api.get('/ai/analytics/game-optimization', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
@@ -133,7 +133,7 @@ export async function fetchMLModels(): Promise<Array<{
     f1Score: number;
   };
 }>> {
-  const { data } = await api.get('/api/v1/ai/ml/models', {
+  const { data } = await api.get('/ai/ml/models', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
@@ -150,7 +150,7 @@ export async function trainModel(modelId: string, config: {
     endDate: string;
   };
 }): Promise<void> {
-  await api.post(`/api/v1/ai/ml/models/${modelId}/train`, config, {
+  await api.post(`/ai/ml/models/${modelId}/train`, config, {
     headers: { 'Cache-Control': 'no-store' }
   });
 }
@@ -172,7 +172,7 @@ export async function fetchABTestExperiments(): Promise<Array<{
   startDate: string;
   endDate: string;
 }>> {
-  const { data } = await api.get('/api/v1/ai/ml/ab-testing/experiments', {
+  const { data } = await api.get('/ai/ml/ab-testing/experiments', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;

@@ -26,7 +26,7 @@ export async function fetchMonitoringDashboard(): Promise<{
     errorRate: number;
   };
 }> {
-  const { data } = await api.get('/api/v1/ai/monitoring/dashboard', {
+  const { data } = await api.get('/system/dashboard', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
@@ -49,7 +49,7 @@ export async function fetchPerformanceMetrics(params: {
     successRate: number;
   };
 }> {
-  const { data } = await api.get('/api/v1/ai/monitoring/performance', {
+  const { data } = await api.get('/system/performance', {
     params,
     headers: { 'Cache-Control': 'no-store' }
   });
@@ -81,14 +81,14 @@ export async function fetchSystemDashboard(): Promise<{
     queryOptimization: any;
   };
 }> {
-  const { data } = await api.get('/api/v1/system/dashboard', {
+  const { data } = await api.get('/system/dashboard', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
 }
 
 export async function fetchSystemHealth(): Promise<SystemHealth> {
-  const { data } = await api.get('/api/v1/system/health', {
+  const { data } = await api.get('/system/health', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
@@ -117,7 +117,23 @@ export async function optimizeSystem(): Promise<{
     details: any;
   };
 }> {
-  const { data } = await api.post('/api/v1/system/optimize', null, {
+  const { data } = await api.post('/system/optimize', null, {
+    headers: { 'Cache-Control': 'no-store' }
+  });
+  return data;
+}
+
+// Additional System APIs matching your backend
+export async function getLoadBalancingStats(): Promise<{
+  activeServers: number;
+  requestDistribution: Array<{
+    serverId: string;
+    requestCount: number;
+    responseTime: number;
+  }>;
+  healthStatus: 'HEALTHY' | 'DEGRADED' | 'CRITICAL';
+}> {
+  const { data } = await api.get('/system/load-balancing', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;

@@ -4,10 +4,9 @@ import type { UserStats, GameParticipation, UserAchievement, SocialConnection, U
 
 // User Management APIs matching backend spec
 export async function fetchProfile(): Promise<User> {
-  const { data } = await api.get('/auth/me', {
-    headers: { 'Cache-Control': 'no-store' }
-  });
-  return data;
+  // Note: Your backend might not have /auth/me
+  // This function might need to be updated based on your actual backend endpoints
+  throw new Error('Profile fetching not implemented - backend endpoint unclear');
 }
 
 export async function updateProfile(profileData: {
@@ -42,6 +41,48 @@ export async function updateProfileLegacy(
 ): Promise<ProfileResponse> {
   const profile = await updateProfile(input);
   return { profile };
+}
+
+// New User Management APIs matching your backend
+export async function getUserByUsername(username: string): Promise<User> {
+  const { data } = await api.get(`/users/${username}`, {
+    headers: { 'Cache-Control': 'no-store' }
+  });
+  return data;
+}
+
+export async function updateUserByUsername(
+  username: string,
+  profileData: {
+    firstName?: string;
+    lastName?: string;
+    bio?: string;
+  }
+): Promise<User> {
+  const { data } = await api.put(`/users/${username}`, profileData, {
+    headers: { 'Cache-Control': 'no-store' }
+  });
+  return data;
+}
+
+export async function getUserAvatar(username: string): Promise<string> {
+  const { data } = await api.get(`/users/${username}/avatar`, {
+    headers: { 'Cache-Control': 'no-store' },
+    responseType: 'blob'
+  });
+  return URL.createObjectURL(data);
+}
+
+export async function uploadUserAvatar(username: string, avatarFile: File): Promise<void> {
+  const formData = new FormData();
+  formData.append('avatar', avatarFile);
+  
+  await api.post(`/users/${username}/avatar`, formData, {
+    headers: { 
+      'Content-Type': 'multipart/form-data',
+      'Cache-Control': 'no-store' 
+    }
+  });
 }
 
 /** Fetch user statistics */

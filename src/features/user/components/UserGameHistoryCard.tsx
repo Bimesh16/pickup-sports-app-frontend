@@ -65,7 +65,7 @@ export default function UserGameHistoryCard({ gameHistory, onGamePress }: UserGa
     <View style={styles.container}>
       <Text style={styles.title}>Recent Game History</Text>
       
-      {gameHistory.length === 0 ? (
+      {!gameHistory || gameHistory.length === 0 ? (
         <RNView style={styles.emptyState}>
           <Text style={styles.emptyIcon}>🎮</Text>
           <Text style={styles.emptyText}>No games yet</Text>
@@ -131,7 +131,7 @@ export default function UserGameHistoryCard({ gameHistory, onGamePress }: UserGa
             </Pressable>
           ))}
           
-          {gameHistory.length > 10 && (
+          {gameHistory && gameHistory.length > 10 && (
             <RNView style={styles.moreGames}>
               <Text style={styles.moreGamesText}>
                 +{gameHistory.length - 10} more games

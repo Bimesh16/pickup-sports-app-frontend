@@ -19,3 +19,16 @@ export async function markChatRead(gameId: string, messageId: string): Promise<v
     { headers: { 'Cache-Control': 'no-store' } },
   );
 }
+
+// Chat Moderation APIs matching your backend
+export async function muteUserInChat(gameId: string, username: string): Promise<void> {
+  await api.post(`/games/${gameId}/moderation/mute/${encodeURIComponent(username)}`, null, {
+    headers: { 'Cache-Control': 'no-store' }
+  });
+}
+
+export async function unmuteUserInChat(gameId: string, username: string): Promise<void> {
+  await api.delete(`/games/${gameId}/moderation/mute/${encodeURIComponent(username)}`, {
+    headers: { 'Cache-Control': 'no-store' }
+  });
+}

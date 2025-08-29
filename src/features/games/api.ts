@@ -9,13 +9,13 @@ import type {
 } from '@/src/types/api';
 
 export async function fetchGames(): Promise<Game[]> {
-  const { data } = await api.get('/api/v1/games', { headers: { 'Cache-Control': 'no-store' } });
+  const { data } = await api.get('/games', { headers: { 'Cache-Control': 'no-store' } });
   return data as Game[];
 }
 
 // New API matching backend spec
 export async function fetchGamesWithPagination(query: GamesQuery = {}): Promise<PaginatedResponse<BackendGame>> {
-  const { data } = await api.get('/api/v1/games', {
+  const { data } = await api.get('/games', {
     params: {
       sport: query.sport,
       skillLevel: query.skillLevel,
@@ -31,7 +31,7 @@ export async function fetchGamesWithPagination(query: GamesQuery = {}): Promise<
 }
 
 export async function fetchMyGames(): Promise<PaginatedResponse<BackendGame>> {
-  const { data } = await api.get('/api/v1/games/my-games', {
+  const { data } = await api.get('/games/my-games', {
     headers: { 'Cache-Control': 'no-store' }
   });
   return data;
@@ -142,16 +142,16 @@ export async function adminPromoteWaitlist(id: string, username: string): Promis
 }
 
 export async function fetchGame(id: string): Promise<Game> {
-  const { data } = await api.get(`/api/v1/games/${id}`, { headers: { 'Cache-Control': 'no-store' } });
+  const { data } = await api.get(`/games/${id}`, { headers: { 'Cache-Control': 'no-store' } });
   return data as Game;
 }
 
 export async function joinGame(id: string): Promise<void> {
-  await api.post(`/api/v1/games/${id}/join`, null, { headers: { 'Cache-Control': 'no-store' } });
+  await api.post(`/games/${id}/join`, null, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function leaveGame(id: string): Promise<void> {
-  await api.post(`/api/v1/games/${id}/leave`, null, { headers: { 'Cache-Control': 'no-store' } });
+  await api.delete(`/games/${id}/leave`, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function rsvpGame(id: string): Promise<void> {
@@ -196,21 +196,48 @@ export async function removeCohost(gameId: string, userId: string): Promise<void
 }
 
 export async function createGame(input: CreateGameInput): Promise<Game> {
-  const { data } = await api.post('/api/v1/games', input, { headers: { 'Cache-Control': 'no-store' } });
+  const { data } = await api.post('/games', input, { headers: { 'Cache-Control': 'no-store' } });
   return data as Game;
 }
 
 // New backend-spec create game
 export async function createGameBackend(input: CreateGameRequest): Promise<BackendGame> {
-  const { data } = await api.post('/api/v1/games', input, { headers: { 'Cache-Control': 'no-store' } });
+  const { data } = await api.post('/games', input, { headers: { 'Cache-Control': 'no-store' } });
   return data;
 }
 
 export async function updateGame(id: string, input: Partial<CreateGameInput>): Promise<Game> {
-  const { data } = await api.put(`/api/v1/games/${id}`, input, { headers: { 'Cache-Control': 'no-store' } });
+  const { data } = await api.put(`/games/${id}`, input, { headers: { 'Cache-Control': 'no-store' } });
   return data as Game;
 }
 
 export async function deleteGame(id: string): Promise<void> {
-  await api.delete(`/api/v1/games/${id}`, { headers: { 'Cache-Control': 'no-store' } });
+  await api.delete(`/games/${id}`, { headers: { 'Cache-Control': 'no-store' } });
+}
+
+// Add missing RSVP status endpoint
+export async function getRsvpStatus(id: string): Promise<{ status: string; canJoin: boolean }> {
+  const { data } = await api.get(`/games/${id}/rsvp-status`, { headers: { 'Cache-Control': 'no-store' } });
+  return data;
+}
+
+// Add missing hold game slot endpoint (with TTL parameter)
+export async function holdGameSlot(id: string, ttl: number = 120): Promise<void> {
+  await api.post(`/games/${id}/hold`, null, { 
+    params: { ttl },
+    headers: { 'Cache-Control': 'no-store' } 
+  });
+}
+
+// Add search games endpoint
+export async function searchGames(params: {
+  sport?: string;
+  location?: string;
+  radiusKm?: number;
+}): Promise<Game[]> {
+  const { data } = await api.get('/search/games', {
+    params,
+    headers: { 'Cache-Control': 'no-store' }
+  });
+  return data as Game[];
 }

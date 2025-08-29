@@ -21,20 +21,15 @@ export function useMfaVerify() {
         const headers: Record<string, string> = { 'Cache-Control': 'no-store' };
         if (body.captchaToken) headers['X-Captcha-Token'] = body.captchaToken;
 
-<<<<<<< Current (Your changes)
-        const { data } = await api.post('/api/v1/auth/mfa/verify', body, { headers });
-=======
         const { data } = await api.post('/auth/mfa/challenge', body, { headers });
->>>>>>> Incoming (Background Agent changes)
 
         if (data?.accessToken && data?.refreshToken) {
           await setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
         }
 
-        const me = await api.get('/api/v1/auth/me', { headers: { 'Cache-Control': 'no-store' } });
-        // Ensure the user object has the required structure
+        // Get user info from MFA response (should include user data)
         const userData = {
-          ...me.data,
+          ...data.user,
           authenticated: true, // Always set this to true after successful MFA verification
         };
         return { user: userData };

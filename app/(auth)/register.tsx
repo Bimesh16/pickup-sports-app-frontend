@@ -1,146 +1,347 @@
-import React, { useMemo, useState } from 'react';
-import { Button, Pressable, StyleSheet, TextInput, View as RNView } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Text, View } from '@/components/Themed';
-import { useToast } from '@/src/components/ToastProvider';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { AppLogo } from '@/src/components/branding/AppLogo';
+import { PrimaryButton, OutlineButton } from '@/src/components/ui/Button';
+import { Card } from '@/src/components/ui/Card';
 import { useRegister } from '@/src/features/auth/hooks/useRegister';
+import { Colors } from '@/src/constants/Colors';
+import Theme from '@/src/constants/Theme';
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState('');
-  const [usernameBlurred, setUsernameBlurred] = useState(false);
   const [email, setEmail] = useState('');
-  const [emailBlurred, setEmailBlurred] = useState(false);
   const [password, setPassword] = useState('');
-  const [passwordBlurred, setPasswordBlurred] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState('');
-  const register = useRegister();
-  const toast = useToast();
-  const router = useRouter();
+  
+  const registerMutation = useRegister();
 
-  const errors = useMemo(() => {
-    return {
-      username: !username.trim() && usernameBlurred ? 'Username is required' : null,
-      email: emailBlurred && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) ? 'Enter a valid email' : null,
-      password: passwordBlurred && password.length < 8 ? 'Password must be at least 8 characters' : null,
-    };
-  }, [username, usernameBlurred, email, emailBlurred, password, passwordBlurred]);
+  const handleRegister = async () => {
+    if (!username.trim() || !email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
 
-  const canSubmit = useMemo(() => {
-    if (!username.trim()) return false;
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return false;
-    if (password.length < 8) return false;
-    return true;
-  }, [username, email, password]);
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
 
-  const onSubmit = async () => {
-    if (!canSubmit || register.isPending) return;
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
     try {
-      const res = await register.mutateAsync({
+      const result = await registerMutation.mutateAsync({
         username: username.trim(),
         email: email.trim(),
-        password,
-        captchaToken: captchaToken.trim() || undefined,
+        password: password.trim(),
       });
-      if ('mfaRequired' in res && res.mfaRequired) {
-        toast.info('MFA required. Continue to verification.');
-        router.push({ pathname: '/(auth)/mfa', params: { username: username.trim(), challenge: res.challenge } } as any);
-        return;
+
+      if (result.registered) {
+        Alert.alert(
+          'Success!', 
+          'Account created successfully! Please sign in.',
+          [{ text: 'OK', onPress: () => router.push('/(auth)/login') }]
+        );
       }
-      if ((res as any)?.verificationRequired) {
-        toast.info('Check your inbox to verify your email');
-        router.replace({ pathname: '/(auth)/verify-email', params: { email: email.trim(), username: username.trim() } } as any);
-        return;
-      }
-      toast.success('Account created');
-      router.replace('/(auth)/login' as any);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Registration failed');
+    } catch (error: any) {
+      Alert.alert('Registration Failed', error.message || 'Please try again');
     }
   };
 
+  const handleBackToLogin = () => {
+    router.push('/(auth)/login');
+  };
+
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Create account' }} />
-      <Text style={styles.title}>Create account</Text>
-      <RNView style={styles.row}>
-        <TextInput
-          style={styles.input}
-          placeholder="Username"
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={username}
-          onChangeText={setUsername}
-          onBlur={() => setUsernameBlurred(true)}
-          onSubmitEditing={onSubmit}
-          blurOnSubmit
-        />
-        {errors.username ? <Text style={styles.error}>{errors.username}</Text> : null}
-      </RNView>
-      <RNView style={styles.row}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-          onBlur={() => setEmailBlurred(true)}
-          onSubmitEditing={onSubmit}
-          blurOnSubmit
-        />
-        {errors.email ? <Text style={styles.error}>{errors.email}</Text> : null}
-      </RNView>
-      <RNView style={styles.row}>
-        <RNView style={styles.passwordRow}>
-          <TextInput
-            style={[styles.input, { flex: 1 }]}
-            placeholder="Password"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-            onBlur={() => setPasswordBlurred(true)}
-            onSubmitEditing={onSubmit}
-            blurOnSubmit
-          />
-          <Pressable onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
-            <FontAwesome name={showPassword ? 'eye-slash' : 'eye'} size={18} />
-          </Pressable>
-        </RNView>
-        {errors.password ? <Text style={styles.error}>{errors.password}</Text> : null}
-      </RNView>
-      <RNView style={styles.row}>
-        <TextInput
-          style={styles.input}
-          placeholder="CAPTCHA token (optional)"
-          autoCapitalize="none"
-          value={captchaToken}
-          onChangeText={setCaptchaToken}
-          onSubmitEditing={onSubmit}
-          blurOnSubmit
-        />
-      </RNView>
-      <Button title={register.isPending ? 'Creating…' : 'Create account'} onPress={onSubmit} disabled={!canSubmit || register.isPending} />
-      <RNView style={{ marginTop: 8 }}>
-        <Button title="Back to Sign in" onPress={() => router.replace('/(auth)/login' as any)} />
-      </RNView>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={Colors.gradients.everest}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.background}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardContainer}
+        >
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity onPress={handleBackToLogin} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={Colors.nepal.white} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Logo Section */}
+            <View style={styles.logoSection}>
+              <AppLogo size="large" variant="icon" />
+              <Text style={styles.welcomeText}>Join the Community</Text>
+              <Text style={styles.subtitleText}>समुदायमा सामेल हुनुहोस्</Text>
+            </View>
+
+            {/* Register Form */}
+            <Card style={styles.formCard}>
+              <Text style={styles.formTitle}>Create Account</Text>
+              <Text style={styles.formSubtitle}>नयाँ खाता बनाउनुहोस्</Text>
+
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
+                  <Ionicons 
+                    name="person-outline" 
+                    size={20} 
+                    color={Colors.text.secondary} 
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Username"
+                    placeholderTextColor={Colors.text.secondary}
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                  />
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  <Ionicons 
+                    name="mail-outline" 
+                    size={20} 
+                    color={Colors.text.secondary} 
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    placeholderTextColor={Colors.text.secondary}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    returnKeyType="next"
+                  />
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  <Ionicons 
+                    name="lock-closed-outline" 
+                    size={20} 
+                    color={Colors.text.secondary} 
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    placeholder="Password"
+                    placeholderTextColor={Colors.text.secondary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    returnKeyType="next"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.passwordToggle}
+                  >
+                    <Ionicons 
+                      name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                      size={20} 
+                      color={Colors.text.secondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  <Ionicons 
+                    name="checkmark-circle-outline" 
+                    size={20} 
+                    color={Colors.text.secondary} 
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Confirm Password"
+                    placeholderTextColor={Colors.text.secondary}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showPassword}
+                    returnKeyType="done"
+                    onSubmitEditing={handleRegister}
+                  />
+                </View>
+              </View>
+
+              <PrimaryButton
+                title={registerMutation.isPending ? "Creating Account..." : "Create Account"}
+                onPress={handleRegister}
+                disabled={registerMutation.isPending}
+                loading={registerMutation.isPending}
+                fullWidth
+                style={styles.registerButton}
+              />
+
+              <View style={styles.loginLinkContainer}>
+                <Text style={styles.loginLinkText}>Already have an account? </Text>
+                <TouchableOpacity onPress={handleBackToLogin}>
+                  <Text style={styles.loginLink}>Sign In</Text>
+                </TouchableOpacity>
+              </View>
+            </Card>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 12, justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: '600', textAlign: 'center', marginBottom: 8 },
-  row: { marginBottom: 8 },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+  container: {
+    flex: 1,
   },
-  error: { color: '#ef4444', marginTop: 4 },
+  
+  background: {
+    flex: 1,
+  },
+  
+  keyboardContainer: {
+    flex: 1,
+  },
+  
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: Theme.spacing[6],
+    paddingVertical: Theme.spacing[4],
+  },
+  
+  header: {
+    position: 'absolute',
+    top: Theme.spacing[12],
+    left: Theme.spacing[6],
+    zIndex: 1,
+  },
+  
+  backButton: {
+    padding: Theme.spacing[2],
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: Theme.borderRadius.lg,
+  },
+  
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: Theme.spacing[6],
+  },
+  
+  welcomeText: {
+    fontSize: Theme.typography.fontSize['2xl'],
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Colors.nepal.crimson,
+    marginTop: Theme.spacing[4],
+    marginBottom: Theme.spacing[1],
+  },
+  
+  subtitleText: {
+    fontSize: Theme.typography.fontSize.base,
+    color: Colors.nepal.blue,
+    textAlign: 'center',
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  
+  formCard: {
+    padding: Theme.spacing[6],
+  },
+  
+  formTitle: {
+    fontSize: Theme.typography.fontSize['2xl'],
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Colors.text.primary,
+    textAlign: 'center',
+    marginBottom: Theme.spacing[1],
+  },
+  
+  formSubtitle: {
+    fontSize: Theme.typography.fontSize.base,
+    color: Colors.nepal.blue,
+    textAlign: 'center',
+    marginBottom: Theme.spacing[6],
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  
+  inputContainer: {
+    gap: Theme.spacing[4],
+    marginBottom: Theme.spacing[6],
+  },
+  
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background.secondary,
+    borderRadius: Theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    paddingHorizontal: Theme.spacing[4],
+  },
+  
+  inputIcon: {
+    marginRight: Theme.spacing[3],
+  },
+  
+  input: {
+    flex: 1,
+    fontSize: Theme.typography.fontSize.base,
+    color: Colors.text.primary,
+    paddingVertical: Theme.spacing[4],
+  },
+  
+  passwordInput: {
+    paddingRight: Theme.spacing[10],
+  },
+  
+  passwordToggle: {
+    position: 'absolute',
+    right: Theme.spacing[4],
+    padding: Theme.spacing[2],
+  },
+  
+  registerButton: {
+    marginBottom: Theme.spacing[4],
+  },
+  
+  loginLinkContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  loginLinkText: {
+    fontSize: Theme.typography.fontSize.base,
+    color: Colors.text.secondary,
+  },
+  
+  loginLink: {
+    fontSize: Theme.typography.fontSize.base,
+    color: Colors.nepal.crimson,
+    fontWeight: Theme.typography.fontWeight.semibold,
+  },
 });

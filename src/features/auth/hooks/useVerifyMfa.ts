@@ -10,7 +10,7 @@ export function useVerifyMfa() {
   return useMutation({
     mutationFn: async (body: { username: string; code: string; rememberDevice?: boolean }) => {
       await verifyMfa(body);
-              const { data } = await api.get('/api/v1/auth/me', { headers: { 'Cache-Control': 'no-store' } });
+              const { data } = await api.get('/auth/me', { headers: { 'Cache-Control': 'no-store' } });
       return data;
     },
     onSuccess: (user) => {

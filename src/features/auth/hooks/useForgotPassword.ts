@@ -17,11 +17,7 @@ export function useForgotPassword() {
         const usernameOrEmail = body.usernameOrEmail?.trim();
         if (!usernameOrEmail) throw new Error('Enter a username or email.');
         const headers = buildRequestHeaders(body.captchaToken);
-<<<<<<< Current (Your changes)
-        await api.post('/api/v1/auth/forgot', { usernameOrEmail }, { headers, signal: body.signal });
-=======
         await api.post('/auth/forgot-password', { email: usernameOrEmail }, { headers, signal: body.signal });
->>>>>>> Incoming (Background Agent changes)
       } catch (e: any) {
         const status = e?.response?.status;
         if (!e?.response) {

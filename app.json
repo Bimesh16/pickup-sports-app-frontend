@@ -1,32 +1,44 @@
 {
   "expo": {
-    "name": "pickup-sports-app-frontend",
-    "slug": "pickup-sports-app-frontend",
+    "name": "PickupSports",
+    "slug": "pickup-sports-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "pickupsportsappfrontend",
+    "scheme": "pickupsports",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2f95dc"
+      "backgroundColor": "#dc143c"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pickupsports.app",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#2f95dc"
+        "backgroundColor": "#dc143c"
       },
+      "package": "com.pickupsports.app",
+      "versionCode": 1,
       "edgeToEdgeEnabled": true
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "PickupSports - Find Your Game",
+      "shortName": "PickupSports",
+      "description": "Connect with local sports communities and find pickup games near you",
+      "themeColor": "#dc143c",
+      "backgroundColor": "#ffffff"
     },
     "plugins": [
       "expo-router",
@@ -34,6 +46,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      }
     }
   }
 }

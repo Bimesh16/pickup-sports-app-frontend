@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, setTokens } from '@/src/api/client';
 import { useAuthStore } from '@/src/stores/auth';
+import { debugLoginResponse, debugTokenStorage } from '@/src/utils/auth-debug';
 
 export type LoginBody = {
   username: string;
@@ -28,10 +29,13 @@ export function useLogin() {
         const headers: Record<string, string> = { 'Cache-Control': 'no-store' };
         if (body.captchaToken) headers['X-Captcha-Token'] = body.captchaToken;
 
-        const { data } = await api.post('/api/v1/auth/login', body, {
+        const { data } = await api.post('/auth/login', body, {
           headers,
           signal: body.signal,
         });
+
+        // Debug the login response
+        debugLoginResponse(data);
 
         if (data?.mfaRequired) {
           // Surface MFA challenge to caller (e.g., to navigate to MFA screen)
@@ -39,15 +43,57 @@ export function useLogin() {
         }
 
         // Normal login path: store tokens and fetch current user
-        if (data?.accessToken && data?.refreshToken) {
-          await setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+        // Check both possible token field names from backend
+        const accessToken = data?.accessToken || data?.token;
+        const refreshToken = data?.refreshToken;
+        
+        if (accessToken) {
+          const tokens = { 
+            accessToken, 
+            refreshToken: refreshToken || undefined 
+          };
+          debugTokenStorage(tokens);
+          
+          // Add web-specific debugging
+          if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+            console.log('🔍 Web Login: Setting tokens for web environment');
+            console.log('🔍 Web Login: Access token length:', accessToken.length);
+            console.log('🔍 Web Login: Refresh token exists:', !!refreshToken);
+          }
+          
+          await setTokens(tokens);
+          
+          // Verify tokens were stored (web-specific)
+          if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+            try {
+              const storedAccessToken = localStorage.getItem('accessToken');
+              const storedRefreshToken = localStorage.getItem('refreshToken');
+              console.log('🔍 Web Login: Tokens stored successfully:', {
+                accessTokenStored: !!storedAccessToken,
+                refreshTokenStored: !!storedRefreshToken,
+                accessTokenLength: storedAccessToken?.length || 0,
+                refreshTokenLength: storedRefreshToken?.length || 0,
+              });
+            } catch (error) {
+              console.error('🔍 Web Login: Error verifying token storage:', error);
+            }
+          }
         }
 
-        const me = await api.get('/api/v1/auth/me', { headers: { 'Cache-Control': 'no-store' } });
-        // Ensure the user object has the required structure
+        // Create user object from login response and username
         const userData = {
-          ...me.data,
-          authenticated: true, // Always set this to true after successful login
+          username: body.username,
+          authenticated: true,
+          roles: data.user?.roles || ['USER'], // Default role if none provided
+          displayName: data.user?.displayName || body.username,
+          avatarUrl: data.user?.avatarUrl || null,
+          id: data.user?.id,
+          email: data.user?.email,
+          firstName: data.user?.firstName,
+          lastName: data.user?.lastName,
+          skillLevel: data.user?.skillLevel || 'BEGINNER',
+          createdAt: data.user?.createdAt,
+          updatedAt: data.user?.updatedAt,
         };
         return { user: userData };
       } catch (e: any) {
@@ -69,7 +115,25 @@ export function useLogin() {
     },
     onSuccess: (res) => {
       if ('user' in res && res.user) {
+        console.log('🔍 Login Success: Setting user in auth store:', res.user);
         setUser(res.user);
+        
+        // Web-specific debugging
+        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+          try {
+            console.log('🔍 Web Login: User set in auth store, checking web storage');
+            const accessToken = localStorage.getItem('accessToken');
+            const refreshToken = localStorage.getItem('refreshToken');
+            console.log('🔍 Web Login: Final web storage state:', {
+              accessToken: !!accessToken,
+              refreshToken: !!refreshToken,
+              userSet: true,
+            });
+          } catch (error) {
+            console.error('🔍 Web Login: Error checking web storage:', error);
+          }
+        }
+        
         // Refresh queries that depend on auth state
         void qc.invalidateQueries();
       }

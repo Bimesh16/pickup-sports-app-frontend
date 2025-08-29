@@ -58,25 +58,35 @@ function RootLayoutNav() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
-    const inAuthGroup = segments[0] === '(auth)';
-    
-    // Wait for auth bootstrap to complete before doing routing
-    // We know bootstrap is done when either user is set (authenticated) or explicitly null (not authenticated)
-    const isBootstrapComplete = user !== undefined;
-    
-    if (!isBootstrapComplete && isInitialLoad) {
-      return; // Wait for bootstrap to complete
-    }
+    // Delay navigation until layout is fully mounted
+    const timer = setTimeout(() => {
+      const inAuthGroup = segments[0] === '(auth)';
+      
+      console.log('🔍 RootLayout Navigation Debug:', {
+        user: user ? { ...user, roles: user.roles } : null,
+        inAuthGroup,
+        segments: segments[0],
+        isInitialLoad,
+        userAuthenticated: user?.authenticated,
+      });
+      
+      // Only redirect if we have a definitive auth state
+      if (user === null && !inAuthGroup) {
+        // User is explicitly null (not authenticated)
+        console.log('🔍 Redirecting to login: user is null');
+        router.replace('/(auth)/login');
+      } else if (user && user.authenticated && inAuthGroup) {
+        // User is authenticated but on auth page
+        console.log('🔍 Redirecting to tabs: user is authenticated');
+        router.replace('/(tabs)');
+      }
+      
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+      }
+    }, 100); // Small delay to ensure layout is mounted
 
-    if (isInitialLoad) {
-      setIsInitialLoad(false);
-    }
-
-    if (!user?.authenticated && !inAuthGroup) {
-      router.replace('/(auth)/login');
-    } else if (user?.authenticated && inAuthGroup) {
-      router.replace('/(tabs)');
-    }
+    return () => clearTimeout(timer);
   }, [user, router, segments, isInitialLoad]);
 
   // Deep link handling: /game/:id?join=1 or invite=true
@@ -109,6 +119,33 @@ function RootLayoutNav() {
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="himalaya" options={{ 
+              headerShown: true, 
+              title: 'Himalaya Region',
+              headerBackTitle: 'Back',
+              headerTintColor: '#DC2626', // Nepal crimson
+              headerStyle: {
+                backgroundColor: '#FFFFFF',
+              },
+            }} />
+            <Stack.Screen name="pahad" options={{ 
+              headerShown: true, 
+              title: 'Pahad Region',
+              headerBackTitle: 'Back',
+              headerTintColor: '#DC2626', // Nepal crimson
+              headerStyle: {
+                backgroundColor: '#FFFFFF',
+              },
+            }} />
+            <Stack.Screen name="terai" options={{ 
+              headerShown: true, 
+              title: 'Terai Region',
+              headerBackTitle: 'Back',
+              headerTintColor: '#DC2626', // Nepal crimson
+              headerStyle: {
+                backgroundColor: '#FFFFFF',
+              },
+            }} />
           </Stack>
           <OfflineBanner />
           <CachedDataBanner />

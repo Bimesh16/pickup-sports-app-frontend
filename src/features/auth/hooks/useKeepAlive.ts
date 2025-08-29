@@ -21,14 +21,14 @@ export function useKeepAlive(intervalMs = 10 * 60 * 1000) {
     if (user) {
       // Fire one warm-up request immediately (non-blocking)
       void api
-        .get('/api/v1/auth/keepalive', { headers: { 'Cache-Control': 'no-store' } })
+        .get('/auth/keepalive', { headers: { 'Cache-Control': 'no-store' } })
         .catch(() => {
           // ignore failures; this is best-effort
         });
 
       timerRef.current = setInterval(() => {
         void api
-          .get('/api/v1/auth/keepalive', { headers: { 'Cache-Control': 'no-store' } })
+          .get('/auth/keepalive', { headers: { 'Cache-Control': 'no-store' } })
           .catch(() => {
             // ignore
           });
